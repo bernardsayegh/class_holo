@@ -9233,6 +9233,33 @@ int perturbations_derivs(double tau,
       if (ppt->gauge == synchronous) {
         dy[pv->index_pt_delta_cdm] = -metric_continuity; /* cdm density */
       }
+
+/* BEGIN HOLOGRAPHIC INTERACTION (VMM scale-dependent) */
+      if (pba->interaction_beta != 0.) {
+        double rho_cdm = pvecback[pba->index_bg_rho_cdm];
+        double rho_lambda = pvecback[pba->index_bg_rho_lambda];
+        double rho_tot = pvecback[pba->index_bg_rho_tot];
+        double Omega_lambda = rho_lambda / rho_tot;
+        double w_lambda = -1.0;
+        double a = pvecback[pba->index_bg_a];
+        
+        /* Background interaction: Q/rho = -3 * beta * aH * Omega_de * w_de */
+        double Q_over_rho = -3.0 * pba->interaction_beta * a_prime_over_a * Omega_lambda * w_lambda;
+        
+        /* Scale-dependent factor using k/k_eq transition */
+        /* k_eq ~ 0.01 h/Mpc is matter-radiation equality scale */
+        double k_eq = 0.01 * 0.6766;  /* Convert to 1/Mpc */
+        double x = k / k_eq;
+        /* Suppression grows with k: small k (x<<1) -> minimal, large k (x>>1) -> full */
+        double scale_factor = x * x / (1.0 + x * x);
+        
+        /* Late-time activation: interaction grows as DE becomes important */
+        double late_time_factor = Omega_lambda * Omega_lambda;
+        
+        /* Combined scale-dependent drag */
+        dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+      }
+      /* END HOLOGRAPHIC INTERACTION */
     }
 
     /** - ---> interacting dark radiation */

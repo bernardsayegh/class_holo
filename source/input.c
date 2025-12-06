@@ -2715,6 +2715,7 @@ int input_read_parameters_species(struct file_content * pfc,
   /** 6) Omega_0_k (effective fractional density of curvature) */
   /* Read */
   class_read_double("Omega_k",pba->Omega0_k);
+  class_read_double("interaction_beta",pba->interaction_beta);
   /* Complete set of parameters */
   pba->K = -pba->Omega0_k*pow(pba->H0,2);
   if (pba->K > 0.){
@@ -5905,6 +5906,7 @@ int input_default_params(struct background *pba,
   /** 9) Dark energy contributions */
   pba->Omega0_fld = 0.;
   pba->Omega0_scf = 0.;
+  pba->interaction_beta = 0.;  /**< default: no holographic interaction */
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
   /** 8.a) Omega fluid */
   /** 8.a.1) PPF approximation */
