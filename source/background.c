@@ -436,8 +436,16 @@ int background_functions(
 
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
-    /* Standard algebraic scaling - Dark Drag only affects perturbations, not background */
-    pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+    
+    /* HOLOGRAPHIC MODIFICATION: Read integrated value if interacting */
+    if ((pba->interaction_beta != 0.) && (pba->index_bi_rho_cdm != -1)) {
+        pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
+    } 
+    else {
+        /* Standard algebraic scaling */
+        pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+    }
+
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
@@ -1154,6 +1162,9 @@ int background_indices(
 
   index_bi=0;
 
+  /* HOLOGRAPHIC: Initialize CDM integration index to -1 (disabled by default) */
+  pba->index_bi_rho_cdm = -1;
+
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
 
@@ -1167,12 +1178,21 @@ int background_indices(
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
 
+  /* HOLOGRAPHIC: Register CDM density for numerical integration when interaction is active */
+  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.0)) {
+    class_define_index(pba->index_bi_rho_cdm, _TRUE_, index_bi, 1);
+    if (pba->background_verbose > 0) {
+      printf(" -> Holographic Dark Drag ACTIVE: beta = %g\n", pba->interaction_beta);
+      printf("    CDM density will be integrated numerically (index = %d)\n", pba->index_bi_rho_cdm);
+    }
+  }
+
   /* End of {B} variables */
   pba->bi_B_size = index_bi;
 
   /* now continue with {C} variables */
 
-  /* -> conformal time (must be {C} variable) */
+  /* -> conformal time */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
 
   /* -> proper time (for age of the Universe) */
@@ -2293,7 +2313,10 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf]);
   }
 
-  /* CDM uses algebraic scaling - no integration needed for perturbation-only approach */
+  /* HOLOGRAPHIC: Initialize CDM density for integration (only if index registered) */
+  if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm != -1)) {
+    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm * pow(pba->H0, 2) / pow(a, 3);
+  }
 
   /* Infer pvecback from pvecback_integration */
   class_call(background_functions(pba, a, pvecback_integration, normal_info, pvecback),
@@ -2645,10 +2668,48 @@ int background_derivs(
     rho_M += pvecback[pba->index_bg_rho_idm];
   }
 
+  /* HOLOGRAPHIC MODIFICATION: Apply Dark Drag to CDM evolution */
+  if (pba->has_cdm == _TRUE_) {
+      
+      // 1. Standard evolution: d_rho/d_loga = -3 * rho
+      // This applies whether we are integrating it or not.
+      // If we are NOT integrating (beta=0), this value is calculated but ignored by the solver.
+      // If we ARE integrating, this is the baseline geometric dilution.
+      if (pba->index_bi_rho_cdm != -1) {
+           dy[pba->index_bi_rho_cdm] = -3.0 * y[pba->index_bi_rho_cdm];
+      }
 
-  /* Note: interaction_beta is kept but only used in perturbations.c
-     Background CDM follows standard a^-3 scaling */
+      // 2. Add Holographic Interaction if beta != 0
+      if ((pba->interaction_beta != 0.0) && (pba->index_bi_rho_cdm != -1)) {
+          
+          double rho_cdm   = pvecback[pba->index_bg_rho_cdm];
+          double rho_tot   = pvecback[pba->index_bg_rho_tot];
+          double rho_de    = 0.0;
+          double w_de      = -1.0; 
+          
+          // Identify Dark Energy component
+          if (pba->has_scf == _TRUE_) {
+              rho_de = pvecback[pba->index_bg_rho_scf];
+              double p_scf = pvecback[pba->index_bg_p_scf];
+              if (rho_de > 0) w_de = p_scf / rho_de;
+          } 
+          else if (pba->has_fld == _TRUE_) {
+              rho_de = pvecback[pba->index_bg_rho_fld];
+              w_de = pvecback[pba->index_bg_w_fld];
+          }
+          else if (pba->has_lambda == _TRUE_) {
+              rho_de = pvecback[pba->index_bg_rho_lambda];
+              w_de = -1.0;
+          }
 
+          double Omega_de = rho_de / rho_tot;
+
+          // Q term: Q/H = -3 * beta * rho_m * Omega_de * w_de
+          double term = -3.0 * pba->interaction_beta * rho_cdm * Omega_de * w_de;
+          
+          dy[pba->index_bi_rho_cdm] += term;
+      }
+  }
 
   dy[pba->index_bi_D] = y[pba->index_bi_D_prime]/a/H;
   dy[pba->index_bi_D_prime] = -y[pba->index_bi_D_prime] + 1.5*a*rho_M*y[pba->index_bi_D]/H;
