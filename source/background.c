@@ -1165,9 +1165,6 @@ int background_indices(
   /* HOLOGRAPHIC FIX: Initialize CDM integration index to -1 (disabled by default) */
   pba->index_bi_rho_cdm = -1;
 
-  /* -> index for conformal time in vector of variables to integrate */
-  class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
-
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
 
@@ -1196,6 +1193,9 @@ int background_indices(
   pba->bi_B_size = index_bi;
 
   /* now continue with {C} variables */
+
+  /* -> conformal time */
+  class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
 
   /* -> proper time (for age of the Universe) */
   class_define_index(pba->index_bi_time,_TRUE_,index_bi,1);
