@@ -9227,7 +9227,7 @@ int perturbations_derivs(double tau,
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
         
-        /* HOLOGRAPHIC DARK DRAG - friction on CDM velocity in Newtonian gauge */
+        /* HOLOGRAPHIC DARK DRAG - friction on CDM velocity (Newtonian gauge only) */
         if (pba->interaction_beta != 0.) {
           double Omega_Lambda = pvecback[pba->index_bg_rho_lambda] / pvecback[pba->index_bg_rho_crit];
           double friction = 3.0 * pba->interaction_beta * a_prime_over_a * Omega_Lambda;
@@ -9239,14 +9239,6 @@ int perturbations_derivs(double tau,
 
       if (ppt->gauge == synchronous) {
         dy[pv->index_pt_delta_cdm] = -metric_continuity; /* cdm density */
-        
-        /* HOLOGRAPHIC DARK DRAG - direct suppression of growth in synchronous gauge */
-        if (pba->interaction_beta != 0.) {
-          double Omega_Lambda = pvecback[pba->index_bg_rho_lambda] / pvecback[pba->index_bg_rho_crit];
-          /* Suppression term on delta_cdm to match velocity friction effect */
-          double suppression = 3.0 * pba->interaction_beta * a_prime_over_a * Omega_Lambda;
-          dy[pv->index_pt_delta_cdm] -= suppression * y[pv->index_pt_delta_cdm];
-        }
       }
     }
 
