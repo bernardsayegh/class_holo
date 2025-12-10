@@ -2301,13 +2301,10 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf]);
   }
 
-  /* HOLOGRAPHIC MODIFICATION: Initialize CDM for integration */
-  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
-      /* Standard initial condition: rho_cdm = rho_cdm0 / a^3 */
-      /* Note: At early times (a << 1), the interaction Q ~ Omega_DE is negligible, 
-         so the standard scaling is the correct initial condition. */
-      pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm * pow(pba->H0, 2) / pow(a, 3);
-  }
+  /* NEW (FIXED) CODE: Always initialize if CDM exists */
+if (pba->has_cdm == _TRUE_) {
+     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm * pow(pba->H0, 2) / pow(a, 3);
+}
   /* Infer pvecback from pvecback_integration */
   class_call(background_functions(pba, a, pvecback_integration, normal_info, pvecback),
              pba->error_message,
