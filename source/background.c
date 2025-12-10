@@ -438,7 +438,7 @@ int background_functions(
   if (pba->has_cdm == _TRUE_) {
     
     /* HOLOGRAPHIC MODIFICATION: Read integrated value if interacting */
-    if (pba->interaction_beta != 0.) {
+    if ((pba->interaction_beta != 0.) && (pba->index_bi_rho_cdm != -1)) {
         pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
     } 
     else {
@@ -1162,6 +1162,9 @@ int background_indices(
 
   index_bi=0;
 
+  /* HOLOGRAPHIC FIX: Initialize CDM integration index to -1 (disabled by default) */
+  pba->index_bi_rho_cdm = -1;
+
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
 
@@ -1177,6 +1180,17 @@ int background_indices(
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
+
+  /* HOLOGRAPHIC: Register CDM density for numerical integration when interaction is active.
+   * This MUST be a {B} variable because rho_cdm affects H(a) calculation.
+   * When interaction_beta == 0, CDM uses standard analytic scaling (a^-3). */
+  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.0)) {
+    class_define_index(pba->index_bi_rho_cdm, _TRUE_, index_bi, 1);
+    if (pba->background_verbose > 0) {
+      printf(" -> Holographic Dark Drag ACTIVE: beta = %g\n", pba->interaction_beta);
+      printf("    CDM density will be integrated numerically (index = %d)\n", pba->index_bi_rho_cdm);
+    }
+  }
 
   /* End of {B} variables */
   pba->bi_B_size = index_bi;
@@ -2301,10 +2315,14 @@ int background_initial_conditions(
                pvecback_integration[pba->index_bi_phi_scf]);
   }
 
-  /* NEW (FIXED) CODE: Always initialize if CDM exists */
-if (pba->has_cdm == _TRUE_) {
-     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm * pow(pba->H0, 2) / pow(a, 3);
-}
+  /* HOLOGRAPHIC: Initialize CDM density only if it's being integrated (index != -1) */
+  if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm != -1)) {
+    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm * pow(pba->H0, 2) / pow(a, 3);
+    if (pba->background_verbose > 1) {
+      printf("    Holographic IC: rho_cdm = %e at a = %e\n", 
+             pvecback_integration[pba->index_bi_rho_cdm], a);
+    }
+  }
   /* Infer pvecback from pvecback_integration */
   class_call(background_functions(pba, a, pvecback_integration, normal_info, pvecback),
              pba->error_message,
