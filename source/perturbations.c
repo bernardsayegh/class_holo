@@ -9227,6 +9227,85 @@ int perturbations_derivs(double tau,
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
       }
+
+      /** - ----> synchronous gauge: cdm density only (velocity set to zero by definition of the gauge) */
+
+      if (ppt->gauge == synchronous) {
+        dy[pv->index_pt_delta_cdm] = -metric_continuity; /* cdm density */
+      }
+
+/* BEGIN HOLOGRAPHIC INTERACTION */
+      if (pba->interaction_beta != 0.) {
+        double rho_tot = pvecback[pba->index_bg_rho_tot];
+        double rho_de, w_de;
+        if (pba->has_lambda == _TRUE_) {
+          rho_de = pvecback[pba->index_bg_rho_lambda];
+          w_de = -1.0;
+        } else if (pba->has_fld == _TRUE_) {
+          rho_de = pvecback[pba->index_bg_rho_fld];
+          w_de = pvecback[pba->index_bg_w_fld];
+        } else {
+          rho_de = 0.;
+          w_de = -1.0;
+        }
+        double Omega_de = rho_de / rho_tot;
+        double Q_over_rho = -3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
+        double k_eq = 0.01 * pba->h;
+        double x = k / k_eq;
+        double scale_factor = x * x / (1.0 + x * x);
+        double late_time_factor = Omega_de * Omega_de;
+        dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+      }
+/* END HOLOGRAPHIC INTERACTION */
+
+    }
+
+    /** - ---> interacting dark radiation */
+    if (pba->has_idr == _TRUE_){
+
+      if (ppw->approx[ppw->index_ap_rsa_idr] == (int)rsa_idr_off) {
+
+        dy[pv->index_pt_delta_idr] = -4./3.*(theta_idr + metric_continuity);
+
+        if (ppw->approx[ppw->index_ap_tca_idm_dr] == (int)tca_idm_dr_off) {
+
+          /** - ----> idr velocity */
+          if (ppt->idr_nature == idr_free_streaming)
+            dy[pv->index_pt_theta_idr] = k2*(y[pv->index_pt_delta_idr]/4.-s2_squared*y[pv->index_pt_shear_idr]) + metric_euler;
+          else
+            dy[pv->index_pt_theta_idr] = k2/4. * y[pv->index_pt_delta_idr] + metric_euler;
+
+          if (pth->has_idm_dr == _TRUE_)
+            dy[pv->index_pt_theta_idr] += dmu_idm_dr*(y[pv->index_pt_theta_idm]-y[pv->index_pt_theta_idr]);
+
+          if (ppt->idr_nature == idr_free_streaming){
+
+            /** - ----> exact idr shear */
+            l = 2;
+            dy[pv->index_pt_shear_idr] = 0.5*(8./15.*(y[pv->index_pt_theta_idr]+metric_shear)-3./5.*k*s_l[3]/s_l[2]*y[pv->index_pt_shear_idr+1]);
+            if (pth->has_idm_dr == _TRUE_)
+              dy[pv->index_pt_shear_idr]-= (ppt->alpha_idm_dr[l-2]*dmu_idm_dr + ppt->beta_idr[l-2]*dmu_idr)*y[pv->index_pt_shear_idr];
+
+            /** - ----> exact idr l=3 */
+            l = 3;
+            dy[pv->index_pt_l3_idr] = k/(2.*l+1.)*(l*2.*s_l[l]*s_l[2]*y[pv->index_pt_shear_idr]-(l+1.)*s_l[l+1]*y[pv->index_pt_l3_idr+1]);
+            if (pth->has_idm_dr == _TRUE_)
+              dy[pv->index_pt_l3_idr]-= (ppt->alpha_idm_dr[l-2]*dmu_idm_dr + ppt->beta_idr[l-2]*dmu_idr)*y[pv->index_pt_l3_idr];
+
+            /** - ----> exact idr l>3 */
+            for (l = 4; l < pv->l_max_idr; l++) {
+              dy[pv->index_pt_delta_idr+l] = k/(2.*l+1)*(l*s_l[l]*y[pv->index_pt_delta_idr+l-1]-(l+1.)*s_l[l+1]*y[pv->index_pt_delta_idr+l+1]);
+              if (pth->has_idm_dr == _TRUE_)
+                dy[pv->index_pt_delta_idr+l]-= (ppt->alpha_idm_dr[l-2]*dmu_idm_dr + ppt->beta_idr[l-2]*dmu_idr)*y[pv->index_pt_delta_idr+l];
+            }
+
+            /** - ----> exact idr lmax_dr */
+            l = pv->l_max_idr;
+            dy[pv->index_pt_delta_idr+l] = k*(s_l[l]*y[pv->index_pt_delta_idr+l-1]-(1.+l)*cotKgen*y[pv->index_pt_delta_idr+l]);
+            if (pth->has_idm_dr == _TRUE_)
+              dy[pv->index_pt_delta_idr+l]-= (ppt->alpha_idm_dr[l-2]*dmu_idm_dr + ppt->beta_idr[l-2]*dmu_idr)*y[pv->index_pt_delta_idr+l];
+          }
+        }
         else{
           dy[pv->index_pt_theta_idr] = ppw->theta_idm_prime - tca_slip_idm_dr;
         }
