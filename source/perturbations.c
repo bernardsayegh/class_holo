@@ -9249,7 +9249,7 @@ int perturbations_derivs(double tau,
           w_de = -1.0;
         }
         double Omega_de = rho_de / rho_tot;
-        double Q_over_rho = -3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
+        double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
         double k_eq = 0.01 * pba->h;
         double x = k / k_eq;
         double scale_factor = x * x / (1.0 + x * x);
