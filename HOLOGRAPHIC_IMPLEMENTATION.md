@@ -117,3 +117,21 @@ If using this code, please cite:
 
 Bernard Sayegh
 bernardsayegh@hotmail.com
+
+## Sign Convention (Updated)
+
+The interaction parameter `interaction_beta` uses the **same sign** as the paper:
+- **β = +0.5** in paper corresponds to `interaction_beta = 0.5` in code
+- Positive β → energy flows DE → matter (Q > 0)
+- Positive β → **suppresses** σ₈ via dilution mechanism
+
+### Numerical Results (Planck 2018 parameters)
+
+| β | σ₈ | S₈ |
+|---|-----|-----|
+| 0.0 | 0.823 | 0.837 |
+| 0.25 | 0.790 | 0.803 |
+| **0.5** | **0.759** | **0.772** |
+| 0.75 | 0.730 | 0.742 |
+| 1.0 | 0.702 | 0.714 |
+
