@@ -439,40 +439,10 @@ int background_functions(
     /* Standard CDM: rho_cdm = Omega0_cdm * H0^2 / a^3 */
     double rho_cdm_std = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
     
-    /* Holographic background modification - THEORY-DERIVED */
-    if (pba->interaction_beta != 0 && a > 0.001) {
-      double beta = pba->interaction_beta;
-      
-      /* From theory: dρ_m/dN = -3(1 - β Ω_Λ) ρ_m
-       * Solution: ρ_m = ρ_m,std × exp(3β ∫ Ω_Λ d ln a)
-       * 
-       * Approximate ∫ Ω_Λ d ln a from a_i to a:
-       * At late times, Ω_Λ(a) ≈ Ω_Λ0 × a³ / (Ω_m0 + Ω_Λ0 × a³)
-       * 
-       * Numerical integral gives: ∫_0^{ln a} Ω_Λ d ln a' ≈ 0.45 at a=1
-       * We use a fitting function that captures this behavior.
-       */
-      
-      double Omega_Lambda0 = 1.0 - pba->Omega0_cdm - pba->Omega0_b;
-      double Omega_m0 = pba->Omega0_cdm + pba->Omega0_b;
-      
-      /* Current Omega_Lambda at scale factor a */
-      double a3 = a * a * a;
-      double Omega_Lambda_a = Omega_Lambda0 * a3 / (Omega_m0 + Omega_Lambda0 * a3);
-      
-      /* Approximate integral: I(a) = ∫_0^{ln a} Ω_Λ(a') d ln a'
-       * Fitting function that gives I(1) ≈ 0.45 for standard cosmology */
-      double lna = log(a);
-      double I_approx = Omega_Lambda_a * (lna + 1.0) * 0.35;
-      if (I_approx < 0) I_approx = 0;
-      
-      /* Enhancement factor from theory */
-      double enhancement = exp(3.0 * beta * I_approx);
-      
-      /* Safety cap to prevent runaway */
-      if (enhancement > 3.0) enhancement = 3.0;
-      
-      pvecback[pba->index_bg_rho_cdm] = rho_cdm_std * enhancement;
+    /* Holographic mode: read from integrator if available */
+    if ((pba->interaction_beta != 0.) && (pvecback_B != NULL)) {
+      if (pba->background_verbose > 2) printf("Holographic: reading rho_cdm = %g from integrator\n", pvecback_B[pba->index_bi_rho_cdm]);
+      pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
     } else {
       pvecback[pba->index_bg_rho_cdm] = rho_cdm_std;
     }
@@ -480,8 +450,6 @@ int background_functions(
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
   }
-
-  /* idm */
   if (pba->has_idm == _TRUE_) {
     pvecback[pba->index_bg_rho_idm] = pba->Omega0_idm * pow(pba->H0,2) / pow(a,3);
     rho_tot += pvecback[pba->index_bg_rho_idm];
@@ -1198,6 +1166,8 @@ int background_indices(
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
 
+  /* -> energy density in CDM (holographic, integrated) */
+  class_define_index(pba->index_bi_rho_cdm,(pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.),index_bi,1);
   /* -> energy density in DR */
   class_define_index(pba->index_bi_rho_dr,pba->has_dr,index_bi,1);
 
@@ -2256,7 +2226,13 @@ int background_initial_conditions(
     if (pba->background_verbose > 3)
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
   }
+  /* Holographic CDM initial condition */
+  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
+    pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pba->H0*pba->H0*pow(a,-3);
+    if (pba->background_verbose > 3)
+      printf("Holographic CDM: initial rho_cdm = %g\n",pvecback_integration[pba->index_bi_rho_cdm]);
 
+  }
   if (pba->has_dr == _TRUE_) {
     if (pba->has_dcdm == _TRUE_) {
       /**  - f is the critical density fraction of DR. The exact solution is:
@@ -2683,10 +2659,20 @@ int background_derivs(
 
   dy[pba->index_bi_D] = y[pba->index_bi_D_prime]/a/H;
   dy[pba->index_bi_D_prime] = -y[pba->index_bi_D_prime] + 1.5*a*rho_M*y[pba->index_bi_D]/H;
-
   if (pba->has_dcdm == _TRUE_) {
+
     /** - compute dcdm density \f$ d\rho/dloga = -3 \rho - \Gamma/H \rho \f$*/
     dy[pba->index_bi_rho_dcdm] = -3.*y[pba->index_bi_rho_dcdm] - pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
+  }
+  /* Holographic CDM evolution: d(rho)/d(loga) = -3*rho*(1 - beta*Omega_de) */
+  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
+    double rho_cdm_holo = y[pba->index_bi_rho_cdm];
+    double rho_de = 0.;
+    if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
+    else if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
+    double rho_tot = pvecback[pba->index_bg_rho_tot];
+    double Omega_de = rho_de / rho_tot;
+    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - pba->interaction_beta * Omega_de);
   }
 
   if ((pba->has_dcdm == _TRUE_) && (pba->has_dr == _TRUE_)) {
