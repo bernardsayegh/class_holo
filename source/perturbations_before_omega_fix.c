@@ -9253,7 +9253,7 @@ int perturbations_derivs(double tau,
         double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h; // Improved k_eq
         double x = k / k_eq;
         double scale_factor = x * x / (1.0 + x * x);
-        double late_time_factor = 1.0; // Half effect
+        double late_time_factor = Omega_de * Omega_de; // Half effect
         dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
       }
 /* END HOLOGRAPHIC INTERACTION */
