@@ -11,7 +11,8 @@ s8_kids_mean   = 0.766
 s8_kids_err    = 0.014
 
 # DES Y3 (Weak Lensing)
-s8_des_mean    = 0.776
+s8_des_mean    = 0.776# Check the perturbation implementation
+grep -A10 "Q_over_rho = " source/perturbations.c
 s8_des_err     = 0.017
 
 # 2. MODEL: CLASS Output (UPDATED VALUES)

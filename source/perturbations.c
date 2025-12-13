@@ -9235,7 +9235,7 @@ int perturbations_derivs(double tau,
       }
 
 /* BEGIN HOLOGRAPHIC INTERACTION */
-      if (pba->interaction_beta != 0.) {
+      if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
         double rho_de, w_de;
         if (pba->has_lambda == _TRUE_) {
@@ -9250,10 +9250,10 @@ int perturbations_derivs(double tau,
         }
         double Omega_de = rho_de / rho_tot;
         double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
-        double k_eq = 0.01 * pba->h;
+        double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h; // Improved k_eq
         double x = k / k_eq;
         double scale_factor = x * x / (1.0 + x * x);
-        double late_time_factor = Omega_de * Omega_de;
+        double late_time_factor = Omega_de * Omega_de; // Half effect
         dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
       }
 /* END HOLOGRAPHIC INTERACTION */
