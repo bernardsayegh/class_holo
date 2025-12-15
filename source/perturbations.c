@@ -9259,12 +9259,12 @@ int perturbations_derivs(double tau,
         
         if (rho_de > 0.) {
           double Omega_de = rho_de / rho_tot;
-          double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
+          double Q_over_rho = -3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
           double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h;
           double x = k / k_eq;
           double scale_factor = x * x / (1.0 + x * x);
           double late_time_factor = pba->f_clust;
-          dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+          dy[pv->index_pt_delta_cdm] -= Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
         }
       }
 /* END HOLOGRAPHIC INTERACTION */
