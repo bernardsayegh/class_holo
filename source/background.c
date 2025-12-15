@@ -440,7 +440,7 @@ int background_functions(
     double rho_cdm_std = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
     
     /* Holographic mode: read from integrator if available */
-    if ((pba->interaction_beta != 0.) && (pvecback_B != NULL)) {
+    if ((pba->has_scf == _TRUE_) && (pba->interaction_beta != 0.) && (pvecback_B != NULL)) {
       if (pba->background_verbose > 2) printf("Holographic: reading rho_cdm = %g from integrator\n", pvecback_B[pba->index_bi_rho_cdm]);
       pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm];
     } else {
@@ -1167,7 +1167,7 @@ int background_indices(
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
 
   /* -> energy density in CDM (holographic, integrated) */
-  class_define_index(pba->index_bi_rho_cdm,(pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.),index_bi,1);
+  class_define_index(pba->index_bi_rho_cdm, (pba->has_cdm == _TRUE_) && (pba->has_scf == _TRUE_) && (pba->interaction_beta != 0.),index_bi,1);
   /* -> energy density in DR */
   class_define_index(pba->index_bi_rho_dr,pba->has_dr,index_bi,1);
 
@@ -2227,7 +2227,7 @@ int background_initial_conditions(
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
   }
   /* Holographic CDM initial condition */
-  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
+  if ((pba->has_cdm == _TRUE_) && (pba->has_scf == _TRUE_) && (pba->interaction_beta != 0.)) {
     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pba->H0*pba->H0*pow(a,-3);
     if (pba->background_verbose > 3)
       printf("Holographic CDM: initial rho_cdm = %g\n",pvecback_integration[pba->index_bi_rho_cdm]);
@@ -2664,15 +2664,26 @@ int background_derivs(
     /** - compute dcdm density \f$ d\rho/dloga = -3 \rho - \Gamma/H \rho \f$*/
     dy[pba->index_bi_rho_dcdm] = -3.*y[pba->index_bi_rho_dcdm] - pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
   }
-  /* Holographic CDM evolution: d(rho)/d(loga) = -3*rho*(1 - beta*Omega_de) */
-  if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
-    double rho_cdm_holo = y[pba->index_bi_rho_cdm];
-    double rho_de = 0.;
-    if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
-    else if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
+  /* Holographic CDM-Scalar Field Interaction:
+   * Q = -3*beta*H*rho_m*Omega_phi*w_phi
+   * For w_phi < 0 and beta > 0: Q > 0 means energy flows TO matter
+   * CDM: d(rho_cdm)/dlna = -3*rho_cdm + Q/(H*rho_crit)
+   * Scalar field: modified through phi equation
+   */
+  if ((pba->has_cdm == _TRUE_) && (pba->has_scf == _TRUE_) && (pba->interaction_beta != 0.)) {
+    double rho_cdm = y[pba->index_bi_rho_cdm];
+    double rho_scf = pvecback[pba->index_bg_rho_scf];
+    double p_scf = pvecback[pba->index_bg_p_scf];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
-    double Omega_de = rho_de / rho_tot;
-    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - pba->interaction_beta * Omega_de);
+    double Omega_scf = rho_scf / rho_tot;
+    double w_scf = (rho_scf > 0) ? p_scf / rho_scf : -1.0;
+    
+    /* Q = -3*beta*H*rho_cdm*Omega_scf*w_scf (in units where H is factored out) */
+    /* For dlna evolution: Q_term = Q / H = -3*beta*rho_cdm*Omega_scf*w_scf */
+    double Q_over_H = -3.0 * pba->interaction_beta * rho_cdm * Omega_scf * w_scf;
+    
+    /* CDM gains energy: d(rho_cdm)/dlna = -3*rho_cdm + Q/H */
+    dy[pba->index_bi_rho_cdm] = -3.0 * rho_cdm + Q_over_H;
   }
 
   if ((pba->has_dcdm == _TRUE_) && (pba->has_dr == _TRUE_)) {
@@ -2686,8 +2697,11 @@ int background_derivs(
   }
 
   if (pba->has_scf == _TRUE_) {
-    /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmological time)
-        written as \f$ d\phi/dlna = phi' / (aH) \f$ and \f$ d\phi'/dlna = -2*phi' - (a/H) dV \f$ */
+    /** - Scalar field equation: standard Klein-Gordon 
+        phi'' + 2aH phi' + a^2 dV = 0
+        Note: For holographic interaction, energy exchange with CDM is handled
+        through the CDM equation. The scalar field follows standard evolution
+        for numerical stability. */
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
   }

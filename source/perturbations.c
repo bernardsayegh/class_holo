@@ -9237,24 +9237,35 @@ int perturbations_derivs(double tau,
 /* BEGIN HOLOGRAPHIC INTERACTION */
       if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
-        double rho_de, w_de;
-        if (pba->has_lambda == _TRUE_) {
-          rho_de = pvecback[pba->index_bg_rho_lambda];
-          w_de = -1.0;
-        } else if (pba->has_fld == _TRUE_) {
+        double rho_de = 0.;
+        double w_de = -1.0;
+        
+        /* Check fluid FIRST (has priority when explicitly set) */
+        if ((pba->has_fld == _TRUE_) && (pba->Omega0_fld > 1e-10)) {
           rho_de = pvecback[pba->index_bg_rho_fld];
           w_de = pvecback[pba->index_bg_w_fld];
-        } else {
-          rho_de = 0.;
+        } 
+        /* Then check Lambda */
+        else if ((pba->has_lambda == _TRUE_) && (pba->Omega0_lambda > 1e-10)) {
+          rho_de = pvecback[pba->index_bg_rho_lambda];
           w_de = -1.0;
         }
-        double Omega_de = rho_de / rho_tot;
-        double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
-        double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h; // Improved k_eq
-        double x = k / k_eq;
-        double scale_factor = x * x / (1.0 + x * x);
-        double late_time_factor = 1.0; // Half effect
-        dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+        /* Also check scalar field */
+        else if (pba->has_scf == _TRUE_) {
+          rho_de = pvecback[pba->index_bg_rho_scf];
+          double p_scf = pvecback[pba->index_bg_p_scf];
+          w_de = (rho_de > 0) ? p_scf / rho_de : -1.0;
+        }
+        
+        if (rho_de > 0.) {
+          double Omega_de = rho_de / rho_tot;
+          double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
+          double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h;
+          double x = k / k_eq;
+          double scale_factor = x * x / (1.0 + x * x);
+          double late_time_factor = pba->f_clust;
+          dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+        }
       }
 /* END HOLOGRAPHIC INTERACTION */
 
@@ -9394,20 +9405,18 @@ int perturbations_derivs(double tau,
 
         ca2 = w_fld - w_prime_fld / 3. / (1.+w_fld) / a_prime_over_a;
         cs2 = pba->cs2_fld;
-
+        /* f_clust: clustering fraction (0=smooth like Lambda, 1=full clustering) */
+        double f_c = pba->f_clust;
         /** - ----> fluid density */
-
-        dy[pv->index_pt_delta_fld] =
+        dy[pv->index_pt_delta_fld] = f_c * (
           -(1+w_fld)*(y[pv->index_pt_theta_fld]+metric_continuity)
           -3.*(cs2-w_fld)*a_prime_over_a*y[pv->index_pt_delta_fld]
-          -9.*(1+w_fld)*(cs2-ca2)*a_prime_over_a*a_prime_over_a*y[pv->index_pt_theta_fld]/k2;
-
+          -9.*(1+w_fld)*(cs2-ca2)*a_prime_over_a*a_prime_over_a*y[pv->index_pt_theta_fld]/k2);
         /** - ----> fluid velocity */
-
-        dy[pv->index_pt_theta_fld] = /* fluid velocity */
+        dy[pv->index_pt_theta_fld] = f_c * (
           -(1.-3.*cs2)*a_prime_over_a*y[pv->index_pt_theta_fld]
           +cs2*k2/(1.+w_fld)*y[pv->index_pt_delta_fld]
-          +metric_euler;
+          +metric_euler);
       }
       else {
         dy[pv->index_pt_Gamma_fld] = ppw->Gamma_prime_fld; /* Gamma variable of PPF formalism */
