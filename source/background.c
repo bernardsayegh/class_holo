@@ -2668,8 +2668,8 @@ int background_derivs(
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     double rho_cdm_holo = y[pba->index_bi_rho_cdm];
     double rho_de = 0.;
-    if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
-    else if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
+    if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
+    else if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
     double Omega_de = rho_de / rho_tot;
     dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - pba->interaction_beta * Omega_de);

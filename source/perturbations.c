@@ -9238,12 +9238,12 @@ int perturbations_derivs(double tau,
       if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
         double rho_de, w_de;
-        if (pba->has_lambda == _TRUE_) {
-          rho_de = pvecback[pba->index_bg_rho_lambda];
-          w_de = -1.0;
-        } else if (pba->has_fld == _TRUE_) {
+        if (pba->has_fld == _TRUE_) {
           rho_de = pvecback[pba->index_bg_rho_fld];
           w_de = pvecback[pba->index_bg_w_fld];
+        } else if (pba->has_lambda == _TRUE_) {
+          rho_de = pvecback[pba->index_bg_rho_lambda];
+          w_de = -1.0;
         } else {
           rho_de = 0.;
           w_de = -1.0;
