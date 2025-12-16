@@ -9253,6 +9253,7 @@ int perturbations_derivs(double tau,
           double tauaH = tau * a_prime_over_a;
           double area_ratio = tauaH * tauaH;
           if (area_ratio < 1.0) area_ratio = 1.0;
+          if (area_ratio > 4.0) area_ratio = 4.0;  /* Cap at matter-era value */
           beta_eff = pba->interaction_beta / area_ratio;
         }
 

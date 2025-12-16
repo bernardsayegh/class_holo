@@ -2679,6 +2679,7 @@ int background_derivs(
       double tauaH = y[pba->index_bi_tau] * a * H;  /* tau * aH */
       double area_ratio = tauaH * tauaH;
       if (area_ratio < 1.0) area_ratio = 1.0;
+      if (area_ratio > 4.0) area_ratio = 4.0;  /* Cap at matter-era value */
       beta_eff = pba->interaction_beta / area_ratio;
     }
     
