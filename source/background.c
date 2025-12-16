@@ -2672,7 +2672,17 @@ int background_derivs(
     else if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
     double Omega_de = rho_de / rho_tot;
-    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - pba->interaction_beta * Omega_de);
+    
+    /* Compute effective beta with optional area dilution */
+    double beta_eff = pba->interaction_beta;
+    if (pba->interaction_area_dilution == _TRUE_) {
+      double tauaH = y[pba->index_bi_tau] * a * H;  /* tau * aH */
+      double area_ratio = tauaH * tauaH;
+      if (area_ratio < 1.0) area_ratio = 1.0;
+      beta_eff = pba->interaction_beta / area_ratio;
+    }
+    
+    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - beta_eff * Omega_de);
   }
 
   if ((pba->has_dcdm == _TRUE_) && (pba->has_dr == _TRUE_)) {

@@ -9237,24 +9237,42 @@ int perturbations_derivs(double tau,
 /* BEGIN HOLOGRAPHIC INTERACTION */
       if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
-        double rho_de, w_de;
+        double rho_de;
         if (pba->has_fld == _TRUE_) {
           rho_de = pvecback[pba->index_bg_rho_fld];
-          w_de = pvecback[pba->index_bg_w_fld];
         } else if (pba->has_lambda == _TRUE_) {
           rho_de = pvecback[pba->index_bg_rho_lambda];
-          w_de = -1.0;
         } else {
           rho_de = 0.;
-          w_de = -1.0;
         }
         double Omega_de = rho_de / rho_tot;
-        double Q_over_rho = +3.0 * pba->interaction_beta * a_prime_over_a * Omega_de * w_de;
-        double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h; // Improved k_eq
-        double x = k / k_eq;
-        double scale_factor = x * x / (1.0 + x * x);
-        double late_time_factor = pba->f_clust; // Half effect
-        dy[pv->index_pt_delta_cdm] += Q_over_rho * scale_factor * late_time_factor * y[pv->index_pt_delta_cdm];
+
+        /* beta_eff = beta_fund / (tau*aH)^2 if area dilution enabled */
+        double beta_eff = pba->interaction_beta;
+        if (pba->interaction_area_dilution == _TRUE_) {
+          double tauaH = tau * a_prime_over_a;
+          double area_ratio = tauaH * tauaH;
+          if (area_ratio < 1.0) area_ratio = 1.0;
+          beta_eff = pba->interaction_beta / area_ratio;
+        }
+
+        /* aQ/rho_c = 3 beta_eff (aH) Omega_de */
+        double Q_over_rho = -3.0 * beta_eff * a_prime_over_a * Omega_de;
+
+        /* Mode filter: AH-based or k_eq-based */
+        double x;
+        if (pba->interaction_use_ah_filter == _TRUE_) {
+          double denom = a_prime_over_a;
+          if (denom < 1e-30) denom = 1e-30;
+          x = k / denom;  /* k/(aH) */
+        } else {
+          double k_eq = 0.073 * (pba->Omega0_cdm + pba->Omega0_b) * pba->h * pba->h;
+          x = k / k_eq;
+        }
+        double mode_factor = x * x / (1.0 + x * x);
+
+        dy[pv->index_pt_delta_cdm] += Q_over_rho * mode_factor * pba->f_clust 
+                                      * y[pv->index_pt_delta_cdm];
       }
 /* END HOLOGRAPHIC INTERACTION */
 
