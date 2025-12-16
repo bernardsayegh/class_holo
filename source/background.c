@@ -2665,6 +2665,28 @@ int background_derivs(
     dy[pba->index_bi_rho_dcdm] = -3.*y[pba->index_bi_rho_dcdm] - pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
   }
   /* Holographic CDM evolution: d(rho)/d(loga) = -3*rho*(1 - beta*Omega_de) */
+  /* ==================== HOLOGRAPHIC INTERACTION ====================
+   * 
+   * This implements the Holographic Equilibrium Principle where energy
+   * is injected into CDM from the cosmological horizon, NOT exchanged
+   * between CDM and DE.
+   *
+   * Physical picture:
+   * - Energy comes from the HORIZON (holographic mechanism)
+   * - DE acts as a CATALYST/TRIGGER, not a donor
+   * - Vacuum energy at the horizon is "processed" into matter
+   * - This is a ONE-WAY INJECTION, not CDM<->DE exchange
+   *
+   * Therefore, NO compensating term is added to DE continuity equation.
+   * The DE evolves according to its standard equation of state.
+   *
+   * Parameters:
+   * - interaction_beta: fundamental coupling (theoretical: 0.5)
+   * - interaction_area_dilution: if TRUE, beta_eff = beta / (tau*aH)^2
+   *   with cap at 4 (matter-era value), giving beta_eff ~ 0.125
+   *
+   * Result: CDM dilutes slower -> Omega_m evolves toward 1/3 attractor
+   * ================================================================== */
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     double rho_cdm_holo = y[pba->index_bi_rho_cdm];
     double rho_de = 0.;
@@ -2683,6 +2705,9 @@ int background_derivs(
       beta_eff = pba->interaction_beta / area_ratio;
     }
     
+    /* Modified CDM continuity: d(rho)/dlna = -3*rho*(1 - beta_eff*Omega_de)
+     * Standard would be: d(rho)/dlna = -3*rho
+     * The (1 - beta_eff*Omega_de) factor SLOWS dilution when Omega_de > 0 */
     dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - beta_eff * Omega_de);
   }
 

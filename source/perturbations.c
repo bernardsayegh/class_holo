@@ -9234,7 +9234,28 @@ int perturbations_derivs(double tau,
         dy[pv->index_pt_delta_cdm] = -metric_continuity; /* cdm density */
       }
 
-/* BEGIN HOLOGRAPHIC INTERACTION */
+/* ==================== HOLOGRAPHIC INTERACTION (PERTURBATIONS) ====================
+       * 
+       * This modifies the CDM density perturbation equation to include the effect
+       * of holographic energy injection. The key physics:
+       *
+       * 1. GAUGE: Synchronous gauge only. If you need Newtonian gauge, add equivalent terms.
+       *
+       * 2. CLUSTERING FRACTION (f_clust):
+       *    - f_clust = 0: Homogeneous injection (δQ = 0) -> maximum S8 suppression
+       *    - f_clust = 1: Clustered injection (δQ ∝ δ_c) -> no S8 change
+       *    Physical choice: f_clust = 0 (horizon doesn't know about local overdensities)
+       *
+       * 3. MODE FILTER k/(aH):
+       *    - Sub-horizon modes (k >> aH): filter saturates -> full suppression
+       *    - Super-horizon modes (k << aH): filter → 0 -> no modification
+       *    - This gives nearly scale-independent suppression for observable k
+       *
+       * 4. NO VELOCITY PERTURBATION: We assume Q^μ ∥ u_c^μ (energy-momentum transfer
+       *    aligned with CDM 4-velocity), so no extra Euler equation terms needed.
+       *
+       * The equation: δ'_c += -(1 - f_clust) * (aQ/ρ_c) * filter * δ_c
+       * ============================================================================== */
       if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
         double rho_de;
