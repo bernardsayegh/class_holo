@@ -9257,7 +9257,7 @@ int perturbations_derivs(double tau,
         }
 
         /* aQ/rho_c = 3 beta_eff (aH) Omega_de */
-        double Q_over_rho = -3.0 * beta_eff * a_prime_over_a * Omega_de;
+        double Q_over_rho = +3.0 * beta_eff * a_prime_over_a * Omega_de;
 
         /* Mode filter: AH-based or k_eq-based */
         double x;
@@ -9271,7 +9271,9 @@ int perturbations_derivs(double tau,
         }
         double mode_factor = x * x / (1.0 + x * x);
 
-        dy[pv->index_pt_delta_cdm] += Q_over_rho * mode_factor * pba->f_clust 
+        /* Clustering fraction: f_clust=1 means no dilution, f_clust=0 means full dilution */
+        double unclustered = 1.0 - pba->f_clust;
+        dy[pv->index_pt_delta_cdm] += - unclustered * Q_over_rho * mode_factor 
                                       * y[pv->index_pt_delta_cdm];
       }
 /* END HOLOGRAPHIC INTERACTION */
