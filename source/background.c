@@ -2677,15 +2677,11 @@ int background_derivs(
    * - Vacuum energy at the horizon is "processed" into matter
    * - This is a ONE-WAY INJECTION, not CDM<->DE exchange
    *
-   * Therefore, NO compensating term is added to DE continuity equation.
-   * The DE evolves according to its standard equation of state.
+   * V17: Pure Sweep Q formula with Surface Gravity scaling
+   * Q/H = 4.5 * beta_eff * Omega_de * rho_tot
+   * where beta_eff = beta * I_eff, I_eff = ((1-q)/2)^2
    *
-   * Parameters:
-   * - interaction_beta: fundamental coupling (theoretical: 0.5)
-   * - interaction_area_dilution: if TRUE, beta_eff = beta / (tau*aH)^2
-   *   with cap at 4 (matter-era value), giving beta_eff ~ 0.125
-   *
-   * Result: CDM dilutes slower -> Omega_m evolves toward 1/3 attractor
+   * This drives Omega_m toward 1/3 attractor and suppresses S8
    * ================================================================== */
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     double rho_cdm_holo = y[pba->index_bi_rho_cdm];
@@ -2694,21 +2690,54 @@ int background_derivs(
     else if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
     double Omega_de = rho_de / rho_tot;
+    double Omega_m = 1.0 - Omega_de;
     
-    /* Compute effective beta with optional area dilution */
-    double beta_eff = pba->interaction_beta;
-    if (pba->interaction_area_dilution == _TRUE_) {
-      double tauaH = y[pba->index_bi_tau] * a * H;  /* tau * aH */
-      double area_ratio = tauaH * tauaH;
-      if (area_ratio < 1.0) area_ratio = 1.0;
-      if (area_ratio > 4.0) area_ratio = 4.0;  /* Cap at matter-era value */
-      beta_eff = pba->interaction_beta / area_ratio;
+    double Q_over_H = 0.0;
+    
+    if (pba->interaction_use_particle_horizon == _TRUE_) {
+      /* ================================================================
+       * PARTICLE HORIZON MODEL with Surface Gravity
+       * Q = 3 H rho_de * beta * I_eff * (1 + 1/alpha)
+       * where alpha = H * r_P / c = H * tau (conformal time)
+       *       I_eff = ((1-q)/2)^2 (surface gravity modulation)
+       * 
+       * At z=0: alpha ~ 3.2, so (1 + 1/alpha) ~ 1.31
+       * At high z: alpha ~ 2, so (1 + 1/alpha) ~ 1.5
+       * ================================================================ */
+      double tau = y[pba->index_bi_tau];  /* conformal time in Mpc */
+      double alpha = a * H * tau;  /* alpha = H * r_P, r_P = a * tau (comoving) */
+      
+      /* Safety: avoid division by zero at early times */
+      if (alpha < 0.1) alpha = 0.1;
+      
+      /* Surface gravity modulation (same as V17) */
+      double q_decel = -1.0 + 1.5 * Omega_m;
+      double dynamic_term = 1.0 - q_decel;
+      if (dynamic_term < 0.0) dynamic_term = 0.0;
+      double I_eff = 0.25 * dynamic_term * dynamic_term;
+      double beta_eff = pba->interaction_beta * I_eff;
+      
+      double correction = 1.0 + 1.0/alpha;
+      Q_over_H = 3.0 * beta_eff * correction * rho_de;
+    }
+    else {
+      /* ================================================================
+       * APPARENT HORIZON MODEL (V17)
+       * Q/H = 4.5 * beta_eff * Omega_de * rho_tot
+       * where beta_eff = beta * I_eff, I_eff = ((1-q)/2)^2
+       * 
+       * Deceleration parameter: q = -1 + 3/2 * Omega_m
+       * Surface gravity scaling: I_eff = ((1-q)/2)^2
+       * ================================================================ */
+      double q_decel = -1.0 + 1.5 * Omega_m;
+      double dynamic_term = 1.0 - q_decel;
+      if (dynamic_term < 0.0) dynamic_term = 0.0;
+      double I_eff = 0.25 * dynamic_term * dynamic_term;
+      double beta_eff = pba->interaction_beta * I_eff;
+      Q_over_H = 4.5 * beta_eff * Omega_de * rho_tot;
     }
     
-    /* Modified CDM continuity: d(rho)/dlna = -3*rho*(1 - beta_eff*Omega_de)
-     * Standard would be: d(rho)/dlna = -3*rho
-     * The (1 - beta_eff*Omega_de) factor SLOWS dilution when Omega_de > 0 */
-    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo*(1.0 - beta_eff * Omega_de);
+    dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H;
   }
 
   if ((pba->has_dcdm == _TRUE_) && (pba->has_dr == _TRUE_)) {

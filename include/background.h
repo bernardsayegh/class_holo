@@ -104,6 +104,8 @@ struct background
   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
   double interaction_beta; /**< holographic coupling strength (0 = no interaction) */
+  short interaction_use_particle_horizon; /**< if TRUE, use particle horizon coefficient A_P instead of apparent horizon 9/4 */
+  double interaction_xi;   /**< velocity-drag coupling strength (document formula) */
   double f_clust;         /**< clustering fraction for perturbation suppression */
   short interaction_area_dilution; /**< if TRUE, apply dynamic area dilution beta_eff = beta_fund / (tau*aH)^2 */
   short interaction_use_ah_filter; /**< if TRUE, use apparent-horizon filter k/(aH) instead of k/k_eq */
@@ -260,6 +262,7 @@ struct background
   int index_bi_rho_dcdm;/**< {B} dcdm density */
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
+  int index_bi_rho_scr; /**< {B} screen/horizon reservoir density (holographic) */
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 

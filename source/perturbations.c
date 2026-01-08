@@ -9226,6 +9226,40 @@ int perturbations_derivs(double tau,
         dy[pv->index_pt_delta_cdm] = -(y[pv->index_pt_theta_cdm]+metric_continuity); /* cdm density */
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
+        
+        /* VELOCITY DRAG: DM-DE scattering (baryon-photon analogue) */
+        if ((pba->interaction_xi != 0.) &&
+            (pba->has_fld == _TRUE_) &&
+            (pba->use_ppf == _FALSE_) &&
+            (pba->has_cdm == _TRUE_) &&
+            (ppt->gauge == newtonian)) {
+          
+          double rho_c = pvecback[pba->index_bg_rho_cdm];
+          double rho_x = pvecback[pba->index_bg_rho_fld];
+          double w_x   = pvecback[pba->index_bg_w_fld];
+          
+          /* Inertial density of DE: (1+w)*rho */
+          double rho_xp = (1.0 + w_x) * rho_x;
+          
+          if ((rho_c > 0.0) && (rho_xp > 0.0)) {
+            
+            /* Late-time gate: only activate for z < 2 (a > 0.33) */
+            double a_now = pvecback[pba->index_bg_a];
+            if (a_now > 0.33) {
+              
+              /* Conformal scattering rate kappa = xi * H * (rho_x / rho_tot) */
+              double rho_tot = pvecback[pba->index_bg_rho_tot];
+              double kappa = pba->interaction_xi * a_prime_over_a * (rho_x / rho_tot);
+              
+              double theta_c = y[pv->index_pt_theta_cdm];
+              double theta_x = y[pv->index_pt_theta_fld];
+              double slip = theta_c - theta_x;
+              
+              /* DM side: -kappa * (rho_xp / rho_c) * slip */
+              dy[pv->index_pt_theta_cdm] += -kappa * (rho_xp / rho_c) * slip;
+            }
+          }
+        }
       }
 
       /** - ----> synchronous gauge: cdm density only (velocity set to zero by definition of the gauge) */
@@ -9268,18 +9302,39 @@ int perturbations_derivs(double tau,
         }
         double Omega_de = rho_de / rho_tot;
 
-        /* beta_eff = beta_fund / (tau*aH)^2 if area dilution enabled */
-        double beta_eff = pba->interaction_beta;
-        if (pba->interaction_area_dilution == _TRUE_) {
-          double tauaH = tau * a_prime_over_a;
-          double area_ratio = tauaH * tauaH;
-          if (area_ratio < 1.0) area_ratio = 1.0;
-          if (area_ratio > 4.0) area_ratio = 4.0;  /* Cap at matter-era value */
-          beta_eff = pba->interaction_beta / area_ratio;
+        double Omega_cdm = pvecback[pba->index_bg_rho_cdm] / rho_tot;
+        double Q_over_rho = 0.0;
+        
+        if (pba->interaction_use_particle_horizon == _TRUE_) {
+          /* PARTICLE HORIZON with Surface Gravity: Q = 3 H rho_de * I_eff * (1 + 1/alpha) */
+          double a = pvecback[pba->index_bg_a];
+          double H = a_prime_over_a / a;  /* H in conformal units */
+          double alpha = a * H * tau;  /* alpha = H * r_P */
+          if (alpha < 0.1) alpha = 0.1;
+          
+          /* Surface gravity modulation */
+          double p_tot = pvecback[pba->index_bg_p_tot];
+          double w_eff = p_tot / rho_tot;
+          double q_decel = 0.5 * (1.0 + 3.0 * w_eff);
+          double dynamic_term = 1.0 - q_decel;
+          if (dynamic_term < 0.0) dynamic_term = 0.0;
+          double I_eff = 0.25 * dynamic_term * dynamic_term;
+          double beta_eff = pba->interaction_beta * I_eff;
+          
+          double correction = 1.0 + 1.0/alpha;
+          Q_over_rho = 3.0 * beta_eff * correction * a_prime_over_a * Omega_de / Omega_cdm;
         }
-
-        /* aQ/rho_c = 3 beta_eff (aH) Omega_de */
-        double Q_over_rho = +3.0 * beta_eff * a_prime_over_a * Omega_de;
+        else {
+          /* APPARENT HORIZON (V17): Surface gravity modulation */
+          double p_tot = pvecback[pba->index_bg_p_tot];
+          double w_eff = p_tot / rho_tot;
+          double q_decel = 0.5 * (1.0 + 3.0 * w_eff);
+          double dynamic_term = 1.0 - q_decel;
+          if (dynamic_term < 0.0) dynamic_term = 0.0;
+          double I_eff = 0.25 * dynamic_term * dynamic_term;
+          double beta_eff = pba->interaction_beta * I_eff;
+          Q_over_rho = 4.5 * beta_eff * a_prime_over_a * Omega_de / Omega_cdm;
+        }
 
         /* Mode filter: AH-based or k_eq-based */
         double x;
@@ -9450,6 +9505,36 @@ int perturbations_derivs(double tau,
           -(1.-3.*cs2)*a_prime_over_a*y[pv->index_pt_theta_fld]
           +cs2*k2/(1.+w_fld)*y[pv->index_pt_delta_fld]
           +metric_euler;
+        
+        /* VELOCITY DRAG COUNTER-TERM: momentum conservation */
+        if ((pba->interaction_xi != 0.) &&
+            (pba->use_ppf == _FALSE_) &&
+            (pba->has_cdm == _TRUE_) &&
+            (ppt->gauge == newtonian)) {
+          
+          double rho_x = pvecback[pba->index_bg_rho_fld];
+          double w_x   = pvecback[pba->index_bg_w_fld];
+          double rho_xp = (1.0 + w_x) * rho_x;
+          
+          if (rho_xp > 0.0) {
+            
+            /* Late-time gate: match CDM side */
+            double a_now = pvecback[pba->index_bg_a];
+            if (a_now > 0.33) {
+              
+              /* SAME kappa as CDM side - this is key for momentum conservation */
+              double rho_tot = pvecback[pba->index_bg_rho_tot];
+              double kappa = pba->interaction_xi * a_prime_over_a * (rho_x / rho_tot);
+              
+              double theta_c = y[pv->index_pt_theta_cdm];
+              double theta_x = y[pv->index_pt_theta_fld];
+              double slip = theta_c - theta_x;
+              
+              /* DE side: +kappa * slip (momentum conservation) */
+              dy[pv->index_pt_theta_fld] += +kappa * slip;
+            }
+          }
+        }
       }
       else {
         dy[pv->index_pt_Gamma_fld] = ppw->Gamma_prime_fld; /* Gamma variable of PPF formalism */
