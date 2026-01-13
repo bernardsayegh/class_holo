@@ -2899,6 +2899,14 @@ cdef class Class:
 
         return (H[0] if np.isscalar(z) else H)
 
+
+    def H0_local(self):
+        """
+        H0_local in km/s/Mpc (super-Schwarzschild corrected).
+        Use for SH0ES likelihood. BAO/SN/CMB use Hubble(0).
+        """
+        return self.ba.H0_local * _c_ / 1000.
+
     def Om_m(self, z):
         """
         Return the fractional density Omega of matter at z

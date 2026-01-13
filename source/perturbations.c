@@ -9227,39 +9227,6 @@ int perturbations_derivs(double tau,
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
         
-        /* VELOCITY DRAG: DM-DE scattering (baryon-photon analogue) */
-        if ((pba->interaction_xi != 0.) &&
-            (pba->has_fld == _TRUE_) &&
-            (pba->use_ppf == _FALSE_) &&
-            (pba->has_cdm == _TRUE_) &&
-            (ppt->gauge == newtonian)) {
-          
-          double rho_c = pvecback[pba->index_bg_rho_cdm];
-          double rho_x = pvecback[pba->index_bg_rho_fld];
-          double w_x   = pvecback[pba->index_bg_w_fld];
-          
-          /* Inertial density of DE: (1+w)*rho */
-          double rho_xp = (1.0 + w_x) * rho_x;
-          
-          if ((rho_c > 0.0) && (rho_xp > 0.0)) {
-            
-            /* Late-time gate: only activate for z < 2 (a > 0.33) */
-            double a_now = pvecback[pba->index_bg_a];
-            if (a_now > 0.33) {
-              
-              /* Conformal scattering rate kappa = xi * H * (rho_x / rho_tot) */
-              double rho_tot = pvecback[pba->index_bg_rho_tot];
-              double kappa = pba->interaction_xi * a_prime_over_a * (rho_x / rho_tot);
-              
-              double theta_c = y[pv->index_pt_theta_cdm];
-              double theta_x = y[pv->index_pt_theta_fld];
-              double slip = theta_c - theta_x;
-              
-              /* DM side: -kappa * (rho_xp / rho_c) * slip */
-              dy[pv->index_pt_theta_cdm] += -kappa * (rho_xp / rho_c) * slip;
-            }
-          }
-        }
       }
 
       /** - ----> synchronous gauge: cdm density only (velocity set to zero by definition of the gauge) */
@@ -9506,35 +9473,6 @@ int perturbations_derivs(double tau,
           +cs2*k2/(1.+w_fld)*y[pv->index_pt_delta_fld]
           +metric_euler;
         
-        /* VELOCITY DRAG COUNTER-TERM: momentum conservation */
-        if ((pba->interaction_xi != 0.) &&
-            (pba->use_ppf == _FALSE_) &&
-            (pba->has_cdm == _TRUE_) &&
-            (ppt->gauge == newtonian)) {
-          
-          double rho_x = pvecback[pba->index_bg_rho_fld];
-          double w_x   = pvecback[pba->index_bg_w_fld];
-          double rho_xp = (1.0 + w_x) * rho_x;
-          
-          if (rho_xp > 0.0) {
-            
-            /* Late-time gate: match CDM side */
-            double a_now = pvecback[pba->index_bg_a];
-            if (a_now > 0.33) {
-              
-              /* SAME kappa as CDM side - this is key for momentum conservation */
-              double rho_tot = pvecback[pba->index_bg_rho_tot];
-              double kappa = pba->interaction_xi * a_prime_over_a * (rho_x / rho_tot);
-              
-              double theta_c = y[pv->index_pt_theta_cdm];
-              double theta_x = y[pv->index_pt_theta_fld];
-              double slip = theta_c - theta_x;
-              
-              /* DE side: +kappa * slip (momentum conservation) */
-              dy[pv->index_pt_theta_fld] += +kappa * slip;
-            }
-          }
-        }
       }
       else {
         dy[pv->index_pt_Gamma_fld] = ppw->Gamma_prime_fld; /* Gamma variable of PPF formalism */

@@ -2716,8 +2716,11 @@ int input_read_parameters_species(struct file_content * pfc,
   /* Read */
   class_read_double("Omega_k",pba->Omega0_k);
   class_read_double("interaction_beta",pba->interaction_beta);
+  
+  /* Super-Schwarzschild H0 correction */
+  class_read_flag("super_schwarzschild_correction", pba->has_super_schw_correction);
+  class_read_double("super_schw_amp", pba->super_schw_amp);
   class_read_int("interaction_use_particle_horizon",pba->interaction_use_particle_horizon);
-  class_read_double("interaction_xi",pba->interaction_xi);
   class_read_double("f_clust",pba->f_clust);
   class_read_int("interaction_area_dilution",pba->interaction_area_dilution);
   class_read_int("interaction_use_ah_filter",pba->interaction_use_ah_filter);
@@ -5912,8 +5915,9 @@ int input_default_params(struct background *pba,
   pba->Omega0_fld = 0.;
   pba->Omega0_scf = 0.;
   pba->interaction_beta = 0.;  /**< default: no holographic interaction */
+  pba->has_super_schw_correction = _FALSE_; /**< default: no super-Schwarzschild correction */
+  pba->super_schw_amp = 1.0;                 /**< default: unit amplitude */
   pba->interaction_use_particle_horizon = _FALSE_; /**< default: use apparent horizon 9/4 */
-  pba->interaction_xi = 0.;     /**< default: no velocity drag */
   pba->f_clust = 1.;          /**< default: fully clustering */
   pba->interaction_area_dilution = _FALSE_;
   pba->interaction_use_ah_filter = _FALSE_;

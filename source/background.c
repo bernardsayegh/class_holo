@@ -583,6 +583,38 @@ int background_functions(
       only place where the Friedmann equation is assumed. Remember
       that densities are all expressed in units of \f$ [3c^2/8\pi G] \f$, ie
       \f$ \rho_{class} = [8 \pi G \rho_{physical} / 3 c^2]\f$ */
+
+  /* super-Schwarzschild backreaction reservoir (rho_scr): vacuum-like (w=-1) */
+  if (pba->has_super_schw_correction == _TRUE_) {
+
+    /* current rho_scr from integrator */
+    if (pvecback_B != NULL) pvecback[pba->index_bg_rho_scr] = pvecback_B[pba->index_bi_rho_scr];
+    else pvecback[pba->index_bg_rho_scr] = 0.;
+
+    /* add to totals BEFORE Friedmann so it affects H(z) and q(z) */
+    rho_tot += pvecback[pba->index_bg_rho_scr];
+    p_tot   += -pvecback[pba->index_bg_rho_scr];
+
+    /* keep p_tot_prime consistent: dp_scr/dln a = - d(rho_scr)/dln a */
+    if (a > 0.4) {
+      double rho_de_2f = 0.;
+      if (pba->has_lambda == _TRUE_) rho_de_2f = pvecback[pba->index_bg_rho_lambda];
+      else if (pba->has_fld == _TRUE_) rho_de_2f = pvecback[pba->index_bg_rho_fld];
+
+      double rho_m_2f = rho_m;
+      double rho_2f   = rho_de_2f + rho_m_2f;
+
+      if (rho_2f > 0.) {
+        double Omega_de_2f = rho_de_2f / rho_2f;
+        double Omega_m_2f  = 1.0 - Omega_de_2f;
+        double S_ss    = 4.5 * Omega_de_2f * Omega_m_2f;
+        double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0/S_ss) : 0.0;
+        double drho_scr_dloga = pba->super_schw_amp * rho_2f * frac_ss;
+        dp_dloga += -drho_scr_dloga;
+      }
+    }
+  }
+
   pvecback[pba->index_bg_H] = sqrt(rho_tot-pba->K/a/a);
 
   /** - compute derivative of H with respect to conformal time */
@@ -610,6 +642,11 @@ int background_functions(
              "rho_crit = %e instead of strictly positive",rho_crit);
 
   /** - compute relativistic density to total density ratio */
+  /* Store integrated super-Schwarzschild excess (rho_scr already added pre-Friedmann) */
+  if (pba->has_super_schw_correction == _TRUE_ && pvecback_B != NULL) {
+    pvecback[pba->index_bg_X_schw] = pvecback_B[pba->index_bi_X_schw];
+  }
+  
   pvecback[pba->index_bg_Omega_r] = rho_r / rho_crit;
 
   /** - compute other quantities in the exhaustive, redundant format */
@@ -1082,6 +1119,7 @@ int background_indices(
 
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
+  class_define_index(pba->index_bg_rho_scr,pba->has_super_schw_correction,index_bg,1);
 
   /* - index for fluid */
   class_define_index(pba->index_bg_rho_fld,pba->has_fld,index_bg,1);
@@ -1100,6 +1138,7 @@ int background_indices(
   class_define_index(pba->index_bg_p_tot_prime,_TRUE_,index_bg,1);
 
   /* - index for Omega_r (relativistic density fraction) */
+  class_define_index(pba->index_bg_X_schw,pba->has_super_schw_correction,index_bg,1);
   class_define_index(pba->index_bg_Omega_r,_TRUE_,index_bg,1);
 
   /* - index interacting for dark radiation */
@@ -1177,6 +1216,9 @@ int background_indices(
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
+
+  class_define_index(pba->index_bi_X_schw,pba->has_super_schw_correction,index_bi,1);
+  class_define_index(pba->index_bi_rho_scr,pba->has_super_schw_correction,index_bi,1);
 
   /* End of {B} variables */
   pba->bi_B_size = index_bi;
@@ -2100,6 +2142,26 @@ int background_solve(
 
   /**  - store information in the background structure */
   pba->Omega0_m = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_m];
+  
+  /* Compute H0_local from super-Schwarzschild correction */
+  if (pba->has_super_schw_correction == _TRUE_) {
+    pba->X0_schw = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_X_schw];
+    /* Model A (amp=0): use input H0 for pure mapping interpretation
+       Model C (amp>0): use physical H0 which includes reservoir effect */
+    if (pba->super_schw_amp > 0.) {
+      double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+      pba->H0_local = H0_phys * exp(pba->X0_schw);
+    } else {
+      pba->H0_local = pba->H0 * exp(pba->X0_schw);  /* pure mapping, no reservoir */
+    }
+    if (pba->background_verbose > 0) {
+      printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n", 
+             pba->X0_schw, pba->H0_local * _c_ / 1000.);
+    }
+  } else {
+    pba->X0_schw = 0.;
+    pba->H0_local = pba->H0;
+  }
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
   pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
 
@@ -2735,6 +2797,29 @@ int background_derivs(
       double I_eff = 0.25 * dynamic_term * dynamic_term;
       double beta_eff = pba->interaction_beta * I_eff;
       Q_over_H = 4.5 * beta_eff * Omega_de * rho_tot;
+
+      /* Super-Schwarzschild excess accumulation */
+      if (pba->has_super_schw_correction == _TRUE_) {
+        /* Default */
+        dy[pba->index_bi_X_schw] = 0.0;
+        dy[pba->index_bi_rho_scr] = 0.0;
+        if (a > 0.4) {
+          /* Two-fluid fractions to match sweep-law derivation exactly */
+          double rho_de_ss = Omega_de * rho_tot;   /* consistent with Omega_de definition */
+          double rho_m_ss  = Omega_m * rho_tot;    /* matter density from Omega_m already in scope */
+          double rho_2f    = rho_de_ss + rho_m_ss;
+          if (rho_2f > 0.) {
+            double Omega_de_2f = rho_de_ss / rho_2f;
+            double Omega_m_2f  = 1.0 - Omega_de_2f;   /* exact two-fluid identity */
+            double S_ss        = 4.5 * Omega_de_2f * Omega_m_2f;
+            double frac_ss     = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
+            dy[pba->index_bi_X_schw] = frac_ss;        /* dX/dln a */
+            
+            /* Backreaction reservoir: d(rho_scr)/d(ln a) = A_schw * rho_2f * f(S) */
+            dy[pba->index_bi_rho_scr] = pba->super_schw_amp * rho_2f * frac_ss;
+          }
+        }
+      }
     }
     
     dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H;

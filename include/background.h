@@ -104,8 +104,11 @@ struct background
   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
   double interaction_beta; /**< holographic coupling strength (0 = no interaction) */
+  double super_schw_amp;           /**< Amplitude for super-Schwarzschild correction (default: 1.0) */
+  double X0_schw;                  /**< accumulated super-Schwarzschild excess at z=0 */
+  double H0_local;                 /**< H0 corrected for super-Schwarzschild effect */
+  short has_super_schw_correction; /**< Flag for super-Schwarzschild H0 correction */
   short interaction_use_particle_horizon; /**< if TRUE, use particle horizon coefficient A_P instead of apparent horizon 9/4 */
-  double interaction_xi;   /**< velocity-drag coupling strength (document formula) */
   double f_clust;         /**< clustering fraction for perturbation suppression */
   short interaction_area_dilution; /**< if TRUE, apply dynamic area dilution beta_eff = beta_fund / (tau*aH)^2 */
   short interaction_use_ah_filter; /**< if TRUE, use apparent-horizon filter k/(aH) instead of k/k_eq */
@@ -172,6 +175,7 @@ struct background
   int index_bg_rho_cdm;       /**< cdm density */
   int index_bg_rho_idm;       /**< idm density */
   int index_bg_rho_lambda;    /**< cosmological constant density */
+  int index_bg_rho_scr;       /**< super-Schwarzschild backreaction reservoir density */
   int index_bg_rho_fld;       /**< fluid density */
   int index_bg_w_fld;         /**< fluid equation of state */
   int index_bg_rho_idr;       /**< density of interacting dark radiation */
@@ -196,6 +200,7 @@ struct background
   int index_bg_p_tot;         /**< Total pressure */
   int index_bg_p_tot_prime;   /**< Conf. time derivative of total pressure */
 
+  int index_bg_X_schw;        /**< integrated super-Schwarzschild excess */
   int index_bg_Omega_r;       /**< relativistic density fraction (\f$ \Omega_{\gamma} + \Omega_{\nu r} \f$) */
 
   /* end of vector in normal format, now quantities in long format */
@@ -269,6 +274,7 @@ struct background
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
+  int index_bi_X_schw;        /**< integrated super-Schwarzschild excess */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 

@@ -77,6 +77,7 @@ cdef extern from "class.h":
         double T_cmb
         double h
         double H0
+        double H0_local
         double age
         double conformal_age
         double K
