@@ -65,10 +65,24 @@ ax.axhline(2.0/3.0, color='gray', ls='--', alpha=0.8, lw=2, label=r'$\Omega = 2/
 ax.axvline(0.0, color='green', ls='-', alpha=0.8, lw=2, label=r'Present ($z=0$)')
 ax.axvline(z_accel, color='purple', ls=':', alpha=0.8, lw=2, label=f'Acceleration ($z \\approx {z_accel:.1f}$)')
 
-ax.text(0.15, 0.28, r'$\Omega_m(0) = 1/3$', fontsize=11, color='blue', fontweight='bold')
-ax.text(0.15, 0.72, r'$\Omega_{de}(0) = 2/3$', fontsize=11, color='red', fontweight='bold')
-ax.text(0.75, 0.28, r'$\Omega_{de}(0.6) = 1/3$', fontsize=11, color='red', fontweight='bold')
-ax.text(0.75, 0.72, r'$\Omega_m(0.6) = 2/3$', fontsize=11, color='blue', fontweight='bold')
+ax.plot(0, 1.0/3.0, 'b*', markersize=20, zorder=5, markeredgecolor='black', markeredgewidth=1.5)
+ax.plot(0, 2.0/3.0, 'r*', markersize=20, zorder=5, markeredgecolor='black', markeredgewidth=1.5)
+ax.plot(z_accel, 1.0/3.0, 'r*', markersize=20, zorder=5, markeredgecolor='black', markeredgewidth=1.5)
+ax.plot(z_accel, 2.0/3.0, 'b*', markersize=20, zorder=5, markeredgecolor='black', markeredgewidth=1.5)
+
+ax.annotate('', xy=(0, 1.0/3.0), xytext=(0.4, 0.15),
+            arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2.5))
+ax.annotate('', xy=(0, 2.0/3.0), xytext=(0.4, 0.85),
+            arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2.5))
+ax.annotate('', xy=(z_accel, 1.0/3.0), xytext=(1.1, 0.15),
+            arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2.5))
+ax.annotate('', xy=(z_accel, 2.0/3.0), xytext=(1.1, 0.85),
+            arrowprops=dict(arrowstyle='->', color='darkgreen', lw=2.5))
+
+ax.text(0.45, 0.12, r'$\Omega_m(0) = 1/3$', fontsize=11, color='blue', fontweight='bold')
+ax.text(0.45, 0.88, r'$\Omega_{de}(0) = 2/3$', fontsize=11, color='red', fontweight='bold')
+ax.text(1.15, 0.12, r'$\Omega_{de}(0.6) = 1/3$', fontsize=11, color='red', fontweight='bold')
+ax.text(1.15, 0.88, r'$\Omega_m(0.6) = 2/3$', fontsize=11, color='blue', fontweight='bold')
 
 ax.text(3.2, 0.5, 'FOUR INTERSECTIONS\nat $1/3$ and $2/3$\n\nNo parameters tuned\nPredicted by theory',
         fontsize=12, ha='center', va='center', fontweight='bold', color='darkgreen',

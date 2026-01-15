@@ -105,6 +105,8 @@ struct background
   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
   double interaction_beta; /**< holographic coupling strength (0 = no interaction) */
   double super_schw_amp;           /**< Amplitude for super-Schwarzschild correction (default: 1.0) */
+  double super_schw_deltaS;        /**< Smoothness of activation g(S), e.g. 0.03 */
+  double super_schw_gamma;         /**< Decay rate Gamma/H for rho_scr after window */
   double X0_schw;                  /**< accumulated super-Schwarzschild excess at z=0 */
   double H0_local;                 /**< H0 corrected for super-Schwarzschild effect */
   short has_super_schw_correction; /**< Flag for super-Schwarzschild H0 correction */
@@ -268,13 +270,14 @@ struct background
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
   int index_bi_rho_scr; /**< {B} screen/horizon reservoir density (holographic) */
+  int index_bi_X_schw;        /**< integrated super-Schwarzschild excess */
+
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
-  int index_bi_X_schw;        /**< integrated super-Schwarzschild excess */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 
