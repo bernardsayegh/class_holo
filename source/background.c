@@ -113,6 +113,7 @@
  */
 
 #include "background.h"
+#include <math.h>
 
 /**
  * Background quantities at given redshift z.
@@ -591,6 +592,14 @@ int background_functions(
     if (pvecback_B != NULL) pvecback[pba->index_bg_rho_scr] = pvecback_B[pba->index_bi_rho_scr];
     else pvecback[pba->index_bg_rho_scr] = 0.;
 
+    /* Model A: mapping-only; disable reservoir contribution when amp==0.
+       This prevents rho_scr from affecting H(z) unless the reservoir is explicitly enabled. */
+    if (pba->super_schw_amp == 0.0) {
+      pvecback[pba->index_bg_rho_scr] = 0.0;
+    }
+
+
+    if (pba->index_bg_Q_scr_to_cdm_over_H >= 0) pvecback[pba->index_bg_Q_scr_to_cdm_over_H] = 0.;
     /* add to totals BEFORE Friedmann so it affects H(z) and q(z) */
     rho_tot += pvecback[pba->index_bg_rho_scr];
     p_tot   += -pvecback[pba->index_bg_rho_scr];
@@ -617,6 +626,21 @@ int background_functions(
         /* Source and decay terms */
         double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
         double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
+        /* Export SCR->CDM rate for perturbations (dimensionless):
+           Qdimless(a) = (Q/H)/rho_cdm = decay_scr / rho_cdm, gated to late times and capped for stiffness control. */
+        if (pba->index_bg_Q_scr_to_cdm_over_H >= 0) {
+          double z_here = 1.0/a - 1.0;
+          double rho_cdm_here = (pvecback_B != NULL) ? pvecback_B[pba->index_bi_rho_cdm] : 0.0;
+          double rate = (rho_cdm_here > 0.) ? (decay_scr / rho_cdm_here) : 0.0;
+
+          if (z_here > 0.600001) rate = 0.0;
+
+          const double QCAP = 0.01;
+          if (rate >  QCAP) rate =  QCAP;
+          if (rate < -QCAP) rate = -QCAP;
+
+          pvecback[pba->index_bg_Q_scr_to_cdm_over_H] = rate;
+        }
         double drho_scr_dloga = source_scr - decay_scr;
         dp_dloga += -drho_scr_dloga;
       }
@@ -1128,6 +1152,7 @@ int background_indices(
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
   class_define_index(pba->index_bg_rho_scr,pba->has_super_schw_correction,index_bg,1);
+  class_define_index(pba->index_bg_Q_scr_to_cdm_over_H,pba->has_super_schw_correction,index_bg,1);
 
   /* - index for fluid */
   class_define_index(pba->index_bg_rho_fld,pba->has_fld,index_bg,1);
@@ -2158,7 +2183,16 @@ int background_solve(
        Model C (amp>0): use physical H0 which includes reservoir effect */
     if (pba->super_schw_amp > 0.) {
       double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
-      pba->H0_local = H0_phys * exp(pba->X0_schw);
+      
+    /* ---- CLAMP X0_schw to prevent exp overflow / NaN propagation ----
+       If X0_schw is not finite, we disable the mapping (X0=0). */
+    if (!isfinite(pba->X0_schw)) pba->X0_schw = 0.0;
+
+    /* Conservative clamp: prevents H0_local -> inf; still allows large but finite shifts. */
+    const double X0_MAX = 0.5;
+    if (pba->X0_schw >  X0_MAX) pba->X0_schw =  X0_MAX;
+    if (pba->X0_schw < -X0_MAX) pba->X0_schw = -X0_MAX;
+pba->H0_local = H0_phys * exp(pba->X0_schw);
     } else {
       pba->H0_local = pba->H0 * exp(pba->X0_schw);  /* pure mapping, no reservoir */
     }
@@ -2780,7 +2814,7 @@ int background_derivs(
       /* Safety: avoid division by zero at early times */
       if (alpha < 0.1) alpha = 0.1;
       
-      /* Surface gravity modulation (same as V17) */
+      /* Surface gravity modulation */
       double q_decel = -1.0 + 1.5 * Omega_m;
       double dynamic_term = 1.0 - q_decel;
       if (dynamic_term < 0.0) dynamic_term = 0.0;
@@ -2793,18 +2827,23 @@ int background_derivs(
     else {
       /* ================================================================
        * APPARENT HORIZON MODEL (V17)
-       * Q/H = 4.5 * beta_eff * Omega_de * rho_tot
-       * where beta_eff = beta * I_eff, I_eff = ((1-q)/2)^2
-       * 
-       * Deceleration parameter: q = -1 + 3/2 * Omega_m
-       * Surface gravity scaling: I_eff = ((1-q)/2)^2
+       * Two-fluid sweep kernel with I_eff modulation
        * ================================================================ */
-      double q_decel = -1.0 + 1.5 * Omega_m;
-      double dynamic_term = 1.0 - q_decel;
+      /* Compute matter density from CDM + baryons */
+      double rho_m_2f = rho_cdm_holo + pvecback[pba->index_bg_rho_b];
+      double rho_2f = rho_de + rho_m_2f;
+      double Omega_de_2f = (rho_2f > 0.) ? (rho_de / rho_2f) : 0.0;
+      double Omega_m_2f  = (rho_2f > 0.) ? (rho_m_2f / rho_2f) : 0.0;
+      
+      /* Surface gravity modulation I_eff = ((1-q)/2)^2 */
+      double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
+      double dynamic_term = 1.0 - q_decel_2f;
       if (dynamic_term < 0.0) dynamic_term = 0.0;
       double I_eff = 0.25 * dynamic_term * dynamic_term;
       double beta_eff = pba->interaction_beta * I_eff;
+      
       Q_over_H = 4.5 * beta_eff * Omega_de * rho_tot;
+      
       double Q_scr_to_cdm_over_H = 0.0;  /* rho_scr decay -> CDM (Q/H) */
 
       /* Super-Schwarzschild excess accumulation with smooth activation + decay */

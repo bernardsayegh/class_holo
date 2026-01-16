@@ -42,6 +42,9 @@ enum interpolation_method {inter_normal, inter_closeby};
 
 struct background
 {
+  /* --- Option C: scr -> cdm transfer (export Q/H to perturbations) --- */
+  int index_bg_Q_scr_to_cdm_over_H;
+
   /** @name - input parameters initialized by user in input module
    *  (all other quantities are computed in this module, given these parameters
    *   and the content of the 'precision' structure)

@@ -9257,6 +9257,37 @@ int perturbations_derivs(double tau,
        *
        * The equation: δ'_c += -(1 - f_clust) * (aQ/ρ_c) * filter * δ_c
        * ============================================================================== */
+
+/* --- SCR->CDM energy-transfer consistency (Option C) -------------------------
+   Uses pvecback[pba->index_bg_Q_scr_to_cdm_over_H] exported in background.c
+   Frame: Q^μ || u_cdm (no momentum transfer in CDM frame).
+   Default: δQ/Q = δ_cdm.
+------------------------------------------------------------------------------- */
+if (pba->has_super_schw_correction == _TRUE_ &&
+    pba->index_bg_Q_scr_to_cdm_over_H >= 0 &&
+    pba->super_schw_gamma != 0.) {
+
+  double a = pvecback[pba->index_bg_a];
+  double H = pvecback[pba->index_bg_H];
+  double rho_cdm = pvecback[pba->index_bg_rho_cdm];
+  double Qscr_over_H = pvecback[pba->index_bg_Q_scr_to_cdm_over_H];
+
+  if (rho_cdm > 0. && Qscr_over_H != 0.) {
+    /* Qscr_over_H = Q/H  =>  aQ/rho = a*H*(Q/H)/rho */
+    double coupling = a * H * Qscr_over_H;  /* aH * (Q/(H rho_c)) - now dimensionless */
+
+    double delta_cdm = y[pv->index_pt_delta_cdm];
+
+    /* δQ/Q = δ_cdm (stable default) */
+    double deltaQ_over_Q = 0.0; /* deltaQ_over_Q = 0 (homogeneous) */
+
+    /* δ_c' += (aQ/rho_c) (δ_c - δQ/Q) */
+    /* Modulate by (1 - f_clust): f_clust=0 -> full effect, f_clust=1 -> no effect */
+      double f_clust_scr = pba->f_clust;  /* reuse the f_clust parameter */
+      dy[pv->index_pt_delta_cdm] += (1.0 - f_clust_scr) * coupling * (deltaQ_over_Q - delta_cdm);
+  }
+}
+
       if ((pba->interaction_beta != 0.) && (ppt->gauge == synchronous)) {
         double rho_tot = pvecback[pba->index_bg_rho_tot];
         double rho_de;
