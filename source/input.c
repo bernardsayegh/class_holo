@@ -5922,7 +5922,7 @@ int input_default_params(struct background *pba,
   pba->super_schw_deltaS = 0.03;             /**< default: smooth activation width */
   pba->super_schw_gamma = 1.0;               /**< default: decay rate = 1 Hubble time */
   pba->interaction_use_particle_horizon = _FALSE_; /**< default: use apparent horizon 9/4 */
-  pba->f_clust = 1.;          /**< default: fully clustering */
+  pba->f_clust = 0.;          /**< default: no clustering (full perturbation damping) */
   pba->interaction_area_dilution = _FALSE_;
   pba->interaction_use_ah_filter = _FALSE_;
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
