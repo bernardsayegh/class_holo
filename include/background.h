@@ -109,7 +109,8 @@ struct background
   double interaction_beta; /**< holographic coupling strength (0 = no interaction) */
   double super_schw_amp;           /**< Amplitude for super-Schwarzschild correction (default: 1.0) */
   double super_schw_deltaS;        /**< Smoothness of activation g(S), e.g. 0.03 */
-  double super_schw_gamma;         /**< Decay rate Gamma/H for rho_scr after window */
+  double super_schw_gamma;
+  short super_schw_no_mapping;   /**< if true, H0_local = H0_phys (disable exp(X0) mapping) */         /**< Decay rate Gamma/H for rho_scr after window */
   double X0_schw;                  /**< accumulated super-Schwarzschild excess at z=0 */
   double H0_local;                 /**< H0 corrected for super-Schwarzschild effect */
   short has_super_schw_correction; /**< Flag for super-Schwarzschild H0 correction */

@@ -2722,6 +2722,7 @@ int input_read_parameters_species(struct file_content * pfc,
   class_read_double("super_schw_amp", pba->super_schw_amp);
   class_read_double("super_schw_deltaS", pba->super_schw_deltaS);
   class_read_double("super_schw_gamma", pba->super_schw_gamma);
+    class_read_int("super_schw_no_mapping", pba->super_schw_no_mapping);
   class_read_int("interaction_use_particle_horizon",pba->interaction_use_particle_horizon);
   class_read_double("f_clust",pba->f_clust);
   class_read_int("interaction_area_dilution",pba->interaction_area_dilution);

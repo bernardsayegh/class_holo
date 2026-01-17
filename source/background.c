@@ -2192,9 +2192,19 @@ int background_solve(
     const double X0_MAX = 0.5;
     if (pba->X0_schw >  X0_MAX) pba->X0_schw =  X0_MAX;
     if (pba->X0_schw < -X0_MAX) pba->X0_schw = -X0_MAX;
-pba->H0_local = H0_phys * exp(pba->X0_schw);
+/* Apply mapping unless disabled */
+      if (pba->super_schw_no_mapping == _TRUE_) {
+        pba->H0_local = H0_phys;  /* Model D: reservoir only, no mapping */
+      } else {
+        pba->H0_local = H0_phys * exp(pba->X0_schw);  /* Model C: reservoir + mapping */
+      }
     } else {
-      pba->H0_local = pba->H0 * exp(pba->X0_schw);  /* pure mapping, no reservoir */
+      /* Model A: amp=0, pure mapping */
+      if (pba->super_schw_no_mapping == _TRUE_) {
+        pba->H0_local = pba->H0;
+      } else {
+        pba->H0_local = pba->H0 * exp(pba->X0_schw);
+      }
     }
     if (pba->background_verbose > 0) {
       printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n", 
