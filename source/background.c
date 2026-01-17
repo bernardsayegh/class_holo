@@ -2196,14 +2196,14 @@ int background_solve(
       if (pba->super_schw_no_mapping == _TRUE_) {
         pba->H0_local = H0_phys;  /* Model D: reservoir only, no mapping */
       } else {
-        pba->H0_local = H0_phys * exp(pba->X0_schw);  /* Model C: reservoir + mapping */
+        pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);  /* Model C: reservoir + mapping with Amap */
       }
     } else {
-      /* Model A: amp=0, pure mapping */
+      /* Model A/B: amp=0, pure mapping with Amap */
       if (pba->super_schw_no_mapping == _TRUE_) {
         pba->H0_local = pba->H0;
       } else {
-        pba->H0_local = pba->H0 * exp(pba->X0_schw);
+        pba->H0_local = pba->H0 * exp(pba->super_schw_Amap * pba->X0_schw);
       }
     }
     if (pba->background_verbose > 0) {
