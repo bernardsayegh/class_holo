@@ -2803,8 +2803,11 @@ int background_derivs(
     if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
     else if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
-    double Omega_de = rho_de / rho_tot;
-    double Omega_m = 1.0 - Omega_de;
+    double Omega_de = (rho_tot > 0.) ? (rho_de / rho_tot) : 0.0;
+
+    /* Matter = baryons + CDM (proper definition, not 1-Omega_de) */
+    double rho_m = pvecback[pba->index_bg_rho_b] + rho_cdm_holo;
+    double Omega_m = (rho_tot > 0.) ? (rho_m / rho_tot) : 0.0;
     
     double Q_over_H = 0.0;
     
@@ -2852,7 +2855,7 @@ int background_derivs(
       double I_eff = 0.25 * dynamic_term * dynamic_term;
       double beta_eff = pba->interaction_beta * I_eff;
       
-      Q_over_H = 4.5 * beta_eff * Omega_de * rho_tot;
+      Q_over_H = 4.5 * beta_eff * Omega_de * Omega_m * rho_tot;  /* sweep kernel */
       
       double Q_scr_to_cdm_over_H = 0.0;  /* rho_scr decay -> CDM (Q/H) */
 
