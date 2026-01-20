@@ -2200,10 +2200,11 @@ int background_solve(
       }
     } else {
       /* Model A/B: amp=0, pure mapping with Amap */
+      double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
       if (pba->super_schw_no_mapping == _TRUE_) {
-        pba->H0_local = pba->H0;
+        pba->H0_local = H0_phys;
       } else {
-        pba->H0_local = pba->H0 * exp(pba->super_schw_Amap * pba->X0_schw);
+        pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
       }
     }
     if (pba->background_verbose > 0) {
