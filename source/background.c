@@ -2178,42 +2178,31 @@ int background_solve(
   
   /* Compute H0_local from super-Schwarzschild correction */
   if (pba->has_super_schw_correction == _TRUE_) {
+    /* Get X0 and H0_phys from integrated background */
     pba->X0_schw = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_X_schw];
-    /* Model A (amp=0): use input H0 for pure mapping interpretation
-       Model C (amp>0): use physical H0 which includes reservoir effect */
-    if (pba->super_schw_amp > 0.) {
-      double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
-      
-    /* ---- CLAMP X0_schw to prevent exp overflow / NaN propagation ----
-       If X0_schw is not finite, we disable the mapping (X0=0). */
-    if (!isfinite(pba->X0_schw)) pba->X0_schw = 0.0;
-
-    /* Conservative clamp: prevents H0_local -> inf; still allows large but finite shifts. */
+    double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+    
+    /* Clamp X0_schw to prevent exp overflow / NaN propagation */
+    if (pba->X0_schw != pba->X0_schw) pba->X0_schw = 0.0;  /* NaN check */
+    if (pba->X0_schw > 1e300 || pba->X0_schw < -1e300) pba->X0_schw = 0.0;
     const double X0_MAX = 0.5;
     if (pba->X0_schw >  X0_MAX) pba->X0_schw =  X0_MAX;
     if (pba->X0_schw < -X0_MAX) pba->X0_schw = -X0_MAX;
-/* Apply mapping unless disabled */
-      if (pba->super_schw_no_mapping == _TRUE_) {
-        pba->H0_local = H0_phys;  /* Model D: reservoir only, no mapping */
-      } else {
-        pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);  /* Model C: reservoir + mapping with Amap */
-      }
+    
+    /* Apply mapping unless disabled */
+    if (pba->super_schw_no_mapping == _TRUE_) {
+      pba->H0_local = H0_phys;
     } else {
-      /* Model A/B: amp=0, pure mapping with Amap */
-      double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
-      if (pba->super_schw_no_mapping == _TRUE_) {
-        pba->H0_local = H0_phys;
-      } else {
-        pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
-      }
+      pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
     }
+    
     if (pba->background_verbose > 0) {
-      printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n", 
+      printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n",
              pba->X0_schw, pba->H0_local * _c_ / 1000.);
     }
   } else {
-    pba->X0_schw = 0.;
-    pba->H0_local = pba->H0;
+    pba->X0_schw = 0.0;
+    pba->H0_local = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
   }
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
   pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
