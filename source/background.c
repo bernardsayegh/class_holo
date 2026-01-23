@@ -2593,6 +2593,10 @@ int background_output_titles(
   class_store_columntitle(titles,"Omega_r(z)",_TRUE_);
   class_store_columntitle(titles,"Omega_m(z)",_TRUE_);
 
+    if (pba->has_super_schw_correction == _TRUE_) {
+      class_store_columntitle(titles,"X_schw",_TRUE_);
+      class_store_columntitle(titles,"(.)rho_scr",_TRUE_);
+    }
   class_store_columntitle(titles,"gr.fac. D",_TRUE_);
   class_store_columntitle(titles,"gr.fac. f",_TRUE_);
 
@@ -2669,6 +2673,10 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_Omega_r],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_Omega_m],_TRUE_,storeidx);
 
+      if (pba->has_super_schw_correction == _TRUE_) {
+        class_store_double(dataptr,pvecback[pba->index_bg_X_schw],_TRUE_,storeidx);
+        class_store_double(dataptr,pvecback[pba->index_bg_rho_scr],_TRUE_,storeidx);
+      }
     class_store_double(dataptr,pvecback[pba->index_bg_D],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_f],_TRUE_,storeidx);
 
@@ -2845,7 +2853,43 @@ int background_derivs(
       double I_eff = 0.25 * dynamic_term * dynamic_term;
       double beta_eff = pba->interaction_beta * I_eff;
       
-      Q_over_H = 4.5 * beta_eff * Omega_de * Omega_m * rho_tot;  /* sweep kernel */
+      Q_over_H = 4.5 * beta_eff * Omega_de_2f * Omega_m_2f * rho_2f;  /* sweep kernel (two-fluid) */      /* FUTURE_SCHW_KAPPA_BOOST */
+      /* Future-only Schwarzschild saturation (negative feedback toward S=1)
+       *  S ≡ 4.5 Ω_de Ω_m (two-fluid)  ;  S=1 ↔ Ω_m=1/3 or 2/3
+       *  We activate only for a>1 (keeps z>=0 unchanged) and only when S<1.
+       *  super_schw_kappa controls strength. Cap must allow boost_*≈14.22 for β=1/12.
+       */
+      if (pba->super_schw_kappa > 0.0) {
+        double S = 4.5 * Omega_de_2f * Omega_m_2f;
+        if (S < 1e-12) S = 1e-12;
+
+        /* One-sided activation: only when trying to go below the critical surface S=1 */
+        {
+          double a_star = 1.001;   /* just above a=1 so z>=0 is EXACTLY unaffected */
+          double Da     = 0.002;   /* sharp but smooth */
+          double DS     = 0.02;
+
+          double g_fut = 0.0;                               /* future gate */
+          if (a > 1.0) g_fut = 0.5 * (1.0 + tanh((a - a_star) / Da));
+          double g_lt  = 0.5 * (1.0 + tanh((1.0 - S) / DS));         /* activates for S<1 */
+
+          /* Negative feedback: as S falls below 1, boost rises ~ (1/S - 1) to hold S→1 */
+          double boost = 1.0 + pba->super_schw_kappa * g_fut * g_lt * (1.0 / S - 1.0);
+
+          /* Stability caps (must be >= ~14.3 if you want Ωm→1/3 for β=1/12) */
+          if (boost > 20.0) boost = 20.0;
+          if (boost < 0.0)  boost = 0.0;
+
+          Q_over_H *= boost;
+        }
+      }
+      /* ------------------------------------------------------------
+       * Future-only Schwarzschild saturation: boost sweep when S<1
+       * Gate: a > 1.05 (keeps z>=0 essentially unchanged).
+       * Strength: super_schw_kappa (default 0.0 => OFF)
+       * ------------------------------------------------------------ */
+/* (removed duplicated super_schw_kappa block) */
+
       
       double Q_scr_to_cdm_over_H = 0.0;  /* rho_scr decay -> CDM (Q/H) */
 

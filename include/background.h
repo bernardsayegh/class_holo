@@ -110,6 +110,8 @@ struct background
   double super_schw_amp;           /**< Amplitude for super-Schwarzschild correction (default: 1.0) */
   double super_schw_deltaS;        /**< Smoothness of activation g(S), e.g. 0.03 */
   double super_schw_gamma;
+  double super_schw_kappa;        /**< future-only S<1 boost strength (0=off) */
+  double super_schw_kappa;      /**< future-only S<1 boost strength (0=off) */
   short super_schw_no_mapping;   /**< if true, H0_local = H0_phys (disable exp(X0) mapping) */
   double super_schw_Amap;         /**< mapping amplitude: H0_local = H0_phys * exp(Amap * X0) */   /**< if true, H0_local = H0_phys (disable exp(X0) mapping) */         /**< Decay rate Gamma/H for rho_scr after window */
   double X0_schw;                  /**< accumulated super-Schwarzschild excess at z=0 */

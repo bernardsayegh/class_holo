@@ -2722,6 +2722,7 @@ int input_read_parameters_species(struct file_content * pfc,
   class_read_double("super_schw_amp", pba->super_schw_amp);
   class_read_double("super_schw_deltaS", pba->super_schw_deltaS);
   class_read_double("super_schw_gamma", pba->super_schw_gamma);
+  class_read_double("super_schw_kappa", pba->super_schw_kappa);
     class_read_int("super_schw_no_mapping", pba->super_schw_no_mapping);
     class_read_double("super_schw_Amap", pba->super_schw_Amap);
   class_read_int("interaction_use_particle_horizon",pba->interaction_use_particle_horizon);
@@ -5923,6 +5924,7 @@ int input_default_params(struct background *pba,
   pba->super_schw_amp = 1.0;                 /**< default: unit amplitude */
   pba->super_schw_deltaS = 0.03;             /**< default: smooth activation width */
   pba->super_schw_gamma = 1.0;               /**< default: decay rate = 1 Hubble time */
+  pba->super_schw_kappa = 0.0;               /**< default: off */
   pba->interaction_use_particle_horizon = _FALSE_; /**< default: use apparent horizon 9/4 */
   pba->f_clust = 0.;          /**< default: no clustering (full perturbation damping) */
   pba->interaction_area_dilution = _FALSE_;
