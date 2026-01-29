@@ -5,6 +5,7 @@ Modified version of [CLASS](https://github.com/lesgourg/class_public) implementi
 > **Holographic Equilibrium: Simultaneous Resolution of the H₀ and S₈ Tensions**
 
 ## Quick Start
+
 ```bash
 # Compile
 make clean && make class
@@ -32,3 +33,7 @@ make clean && make class
 ## Branch
 
 Use `option-c-scr-q` branch for the holographic implementation.
+
+## Citation
+
+[Paper citation to be added]
