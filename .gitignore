@@ -8,3 +8,14 @@ __pycache__/
 venv/
 .DS_Store
 output/
+*.bak.*
+_logs/
+*.pyc
+*.bak.*
+_logs/
+_ff_floor_proof/
+_future_floor_check/
+*.pyc
+__pycache__/
+debug_*.py
+check_*.py
