@@ -17,22 +17,18 @@ make clean && make class
 
 | Parameter | Model A | Model B | Description |
 |-----------|---------|---------|-------------|
-| `interaction_beta` | 0.0833 | 0.0833 | Coupling strength (1/12) |
+| `interaction_beta` | 0.0833 | 0.0833 | Coupling strength (β=1/12) |
 | `f_clust` | 0.0 | 0.0 | Clustering fraction |
-| `super_schwarzschild_correction` | no | yes | Enable SCR |
+| `super_schwarzschild_correction` | no | yes | Enable SCR subsystem |
 | `super_schw_Amap` | - | 2.0 | H₀ mapping amplitude |
 | `super_schw_amp` | - | 0.0 | Reservoir strength |
 
 ## Results
 
-- **S₈ tension**: σ₈ = 0.749 ± 0.005 (ΛCDM: 0.798)
-- **H₀ tension**: H₀_local = 73.30 km/s/Mpc (Model B)
+- **S₈ tension resolved**: σ₈ = 0.749 ± 0.005 (vs ΛCDM: 0.798)
+- **H₀ tension resolved**: H₀_local = 73.30 km/s/Mpc (Model B)
 - **Fit improvement**: Δχ² = -55.0 vs ΛCDM
 
 ## Branch
 
 Use `option-c-scr-q` branch for the holographic implementation.
-
-## Citation
-
-[Paper citation to be added]
