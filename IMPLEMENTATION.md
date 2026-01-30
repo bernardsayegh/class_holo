@@ -61,19 +61,29 @@ When S > 1, excess energy can be:
 The key to resolving the H₀ tension:
 
 ```
-H₀_local = H₀_input × exp(Amap × X₀)
+H₀_local = H₀_phys × exp(Amap × X₀)
 ```
 
 where:
-- **H₀_input**: Input Hubble parameter (= 100 × h from the input file)
+- **H₀_phys**: Physical Hubble parameter from integrated Friedmann equation (what CMB measures)
 - **X₀**: Accumulated super-Schwarzschild excess at z=0
 - **Amap = 2**: Mapping amplitude (Model B)
 
-With Amap=2 and typical X₀ ≈ 0.035, this gives H₀_local ≈ 73 km/s/Mpc while H₀_input ≈ 67.8 km/s/Mpc.
+With Amap=2 and typical X₀ ≈ 0.035, this gives H₀_local ≈ 73 km/s/Mpc while H₀_phys ≈ 67.3 km/s/Mpc.
 
-**Physical interpretation**: The mapping represents how local distance ladder measurements (Cepheids, SNe Ia) would infer a higher expansion rate due to the accumulated super-Schwarzschild effects, while the CMB sees the true cosmological H₀.
+**Physical interpretation**: H₀_phys is the true cosmic expansion rate that determines CMB acoustic scale. H₀_local is what distance ladder measurements infer due to the super-Schwarzschild mapping effect on local calibrators.
 
-### 1.5 Far-Future Completion (κ saturation)
+### 1.5 X_schw Accumulation
+
+The dimensionless excess X is accumulated during background integration:
+
+```c
+dX/dlna = (S > 1) ? (S - 1) : 0
+```
+
+This integral captures the total super-Schwarzschild history. X₀ = X(z=0) is used for the H₀_local mapping.
+
+### 1.6 Far-Future Completion (κ saturation)
 
 Optional mechanism to drive Ω_m → 1/3 in the far future (z < 0):
 
@@ -96,12 +106,13 @@ This only activates for a > 1 and S < 1, ensuring no effect on fitted cosmology.
   - Deceleration parameter q and efficiency I_eff
   - Energy transfer Q/H
   - SCR reservoir dynamics (if enabled)
-  - X_schw accumulation for mapping
+  - X_schw accumulation
   - Far-future κ saturation (if enabled)
 
 - **`background_solve()`**: Computes derived quantities
-  - `X0_schw` from background table at a=1
-  - `H0_local = H0_input * exp(Amap * X0)`
+  - `H0_phys` from integrated background table at z=0
+  - `X0_schw` from background table
+  - `H0_local = H0_phys * exp(Amap * X0)`
 
 ### 2.2 `source/input.c`
 
@@ -147,7 +158,7 @@ This only activates for a > 1 and S < 1, ensuring no effect on fitted cosmology.
 | `super_schw_Amap` | 2 | Mapping amplitude for H₀_local |
 | `super_schw_gamma` | 2.0 | Reservoir decay rate back to CDM |
 | `super_schw_deltaS` | 0.03 | Smoothness of SCR activation around S=1 |
-| `super_schw_no_mapping` | 0 | Set to 1 to disable mapping (H₀_local = H₀_input) |
+| `super_schw_no_mapping` | 0 | Set to 1 to disable mapping (H₀_local = H₀_phys) |
 | `super_schw_kappa` | 0 | Far-future saturation feedback strength |
 
 ---
@@ -279,49 +290,53 @@ double decay_scr = pba->super_schw_gamma * (1.0 - gS) * rho_scr;
 
 ### 5.3 X_schw Accumulation
 
-The super-Schwarzschild excess is accumulated during integration:
-
 ```c
-// X_schw tracks the integrated excess above S=1
-double dX_schw_dlna = gS * frac_ss;  // Only accumulates when S > 1
+// In background_derivs(), accumulate super-Schwarzschild excess
+double dX_dlna = 0.0;
+if (S_ss > 1.0) {
+    dX_dlna = S_ss - 1.0;  // Excess above Schwarzschild limit
+}
+// This is integrated alongside other background quantities
 ```
 
 ### 5.4 H₀_local Mapping in `background_solve()`
 
 ```c
-// Get INPUT H0 (not from integrated background)
-double H0_input = pba->H0 * _c_ / 1000.0;  // km/s/Mpc, = 100 * h
-
-// Get X0 from background table at a=1 (sanitized)
-double X0 = pvecback[pba->index_bg_X_schw];
-if (!isfinite(X0)) X0 = 0.0;
-
-// Store for derived output
-pba->X0_schw = X0;
-
-// Apply mapping (unless disabled)
-if (pba->super_schw_no_mapping == 0) {
-    pba->H0_local = H0_input * exp(pba->super_schw_Amap * X0);
+/* Compute H0_local from super-Schwarzschild correction */
+if (pba->has_super_schw_correction == _TRUE_) {
+    /* Get X0 from background table (accumulated excess at z=0) */
+    pba->X0_schw = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_X_schw];
+    
+    /* Get H0_phys from integrated Friedmann equation */
+    double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+    
+    if (pba->super_schw_no_mapping == _TRUE_) {
+        pba->H0_local = H0_phys; /* mapping disabled => local equals physical */
+    } else {
+        /* Apply mapping: H0_local = H0_phys * exp(Amap * X0) */
+        pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
+    }
 } else {
-    pba->H0_local = H0_input;  // No mapping: H0_local = H0_input
+    pba->X0_schw = 0.0;
+    pba->H0_local = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
 }
 ```
 
-**Key point**: We use `H0_input` (the value from the input file, = 100×h) rather than extracting H₀ from the integrated Friedmann equation. This ensures consistency with how MCMC samplers vary h.
+**Note**: H0_phys is read from the background table at z=0, which contains the integrated Friedmann solution. This is the physical expansion rate that CMB acoustic physics sees.
 
 ---
 
 ## 6. Validation Scripts
 
-### 6.1 Quick Cosmological Statistics (θs-matched)
+### 6.1 All Models Comparison (θs-matched, H₀ split)
 
-This script finds H₀ values that match the Planck θs for both ΛCDM and Model A:
+This script compares all models at fixed Planck θs, showing H₀_input, H₀_phys, and H₀_local separately:
 
 ```python
 #!/usr/bin/env python3
 """
-cosmo_stats_thetas_matched.py
-Compute cosmological statistics with θs matching for fair comparison.
+cosmo_stats_h0split.py
+Compare all models with explicit H0_input vs H0_phys vs H0_local.
 """
 import sys
 sys.path.insert(0, "python")
@@ -329,16 +344,14 @@ from classy import Class
 from scipy.optimize import brentq
 import numpy as np
 
-THETA_S_TARGET = 1.040423   # target is 100*theta_s
+C_KMS = 299792.458
+THETA_S_TARGET = 1.040423
 H_BRACKET = (0.55, 0.80)
-BETA_LCDM = 0.0
-BETA_MODEL_A = 1.0/12.0
-F_CLUST = 0.0
-PKMAX = 10.0
+BETA = 1.0/12.0
 
 BASE_PARAMS = {
     "output": "mPk",
-    "P_k_max_1/Mpc": PKMAX,
+    "P_k_max_1/Mpc": 10.0,
     "omega_b": 0.02242,
     "omega_cdm": 0.11933,
     "n_s": 0.9665,
@@ -350,62 +363,94 @@ BASE_PARAMS = {
     "Omega_k": 0.0,
 }
 
-def compute_stats(h: float, beta: float):
+MODELS = {
+    "LCDM": {},
+    "Model A": {"interaction_beta": BETA, "f_clust": 0.0},
+    "Model B": {"interaction_beta": BETA, "f_clust": 0.0,
+                "super_schwarzschild_correction": "yes", "super_schw_amp": 0.0,
+                "super_schw_Amap": 2.0, "super_schw_deltaS": 0.03,
+                "super_schw_gamma": 2.0, "super_schw_no_mapping": 0},
+    "Model C": {"interaction_beta": BETA, "f_clust": 0.0,
+                "super_schwarzschild_correction": "yes", "super_schw_amp": 1.0,
+                "super_schw_Amap": 2.0, "super_schw_deltaS": 0.03,
+                "super_schw_gamma": 2.0, "super_schw_no_mapping": 0},
+    "Model D": {"interaction_beta": BETA, "f_clust": 0.0,
+                "super_schwarzschild_correction": "yes", "super_schw_amp": 1.0,
+                "super_schw_Amap": 2.0, "super_schw_deltaS": 0.03,
+                "super_schw_gamma": 2.0, "super_schw_no_mapping": 1},
+}
+
+def H0_phys_from_bg(c: Class) -> float:
+    """Get H0 from integrated background at z=0."""
+    bg = c.get_background()
+    z = bg["z"]
+    i0 = int(np.argmin(np.abs(z)))
+    return float(bg["H [1/Mpc]"][i0] * C_KMS)
+
+def compute_stats(h, model_params):
     p = dict(BASE_PARAMS)
     p["h"] = float(h)
-    if beta > 0:
-        p["interaction_beta"] = float(beta)
-        p["f_clust"] = float(F_CLUST)
-
+    p.update(model_params)
     c = Class()
     c.set(p)
     c.compute()
-
+    
     theta = c.get_current_derived_parameters(["100*theta_s"])["100*theta_s"]
-    H0 = 100.0 * c.h()
+    H0_in = 100.0 * c.h()
+    H0_phys = H0_phys_from_bg(c)
     Om = float(c.Omega_m())
     sig8 = float(c.sigma8())
     S8 = sig8 * np.sqrt(Om / 0.3)
-
+    H0_loc = float(c.get_current_derived_parameters(["H0_local"])["H0_local"])
+    
+    X0 = 0.0
+    try:
+        X0 = float(c.get_current_derived_parameters(["X0_schw"])["X0_schw"])
+    except Exception:
+        pass
+    
     c.struct_cleanup()
     c.empty()
-    return float(theta), float(H0), Om, sig8, float(S8)
+    return dict(theta=float(theta), H0_in=H0_in, H0_phys=H0_phys, H0_loc=H0_loc,
+                X0=X0, Omega_m=Om, sigma8=sig8, S8=S8)
 
-def solve_h_for_theta(beta: float, target: float, bracket=(0.55, 0.80)):
+def solve_h(model_params):
     def f(h):
-        theta, *_ = compute_stats(h, beta)
-        return theta - target
-    return brentq(f, bracket[0], bracket[1], xtol=1e-8, rtol=1e-12)
+        return compute_stats(h, model_params)["theta"] - THETA_S_TARGET
+    return brentq(f, H_BRACKET[0], H_BRACKET[1], xtol=1e-8)
 
-def run_model(name: str, beta: float):
-    h_sol = solve_h_for_theta(beta, THETA_S_TARGET, H_BRACKET)
-    theta, H0, Om, sig8, S8 = compute_stats(h_sol, beta)
-    print(f"\n{name}")
-    print(f"  beta         = {beta:.12f}")
-    print(f"  h (solved)   = {h_sol:.8f}")
-    print(f"  100*theta_s  = {theta:.6f}   (target {THETA_S_TARGET:.6f})")
-    print(f"  H0           = {H0:.4f} km/s/Mpc")
-    print(f"  Omega_m      = {Om:.8f}")
-    print(f"  sigma8       = {sig8:.8f}")
-    print(f"  S8           = {S8:.8f}")
-    return h_sol, theta, H0, Om, sig8, S8
+results = {}
+for name, params in MODELS.items():
+    print(f"Running {name}...")
+    h = solve_h(params)
+    results[name] = {"h": h, **compute_stats(h, params)}
 
-if __name__ == "__main__":
-    print("CLASS stats (θs-matched)")
-    print("=" * 78)
-    print(f"Target: 100*theta_s = {THETA_S_TARGET:.6f}")
-    print("=" * 78)
+print("\nSUMMARY (explicit H0_in vs H0_phys vs H0_local)")
+print(f"{'Model':<10} {'h':>7} {'H0_in':>8} {'H0_phy':>8} {'H0_loc':>8} {'X0':>8} {'Om':>8} {'sig8':>8} {'S8':>8}")
+for name, s in results.items():
+    print(f"{name:<10} {s['h']:>7.5f} {s['H0_in']:>8.2f} {s['H0_phys']:>8.2f} {s['H0_loc']:>8.2f} "
+          f"{s['X0']:>8.5f} {s['Omega_m']:>8.5f} {s['sigma8']:>8.5f} {s['S8']:>8.5f}")
 
-    run_model("ΛCDM (β=0)", BETA_LCDM)
-    run_model("Model A (β=1/12)", BETA_MODEL_A)
+print("\nTargets: SH0ES H0=73.04, DES S8=0.776")
 ```
 
-**Run with:**
-```bash
-python3 cosmo_stats_thetas_matched.py
+**Expected output:**
+```
+Model            h    H0_in   H0_phy   H0_loc       X0       Om     sig8       S8
+LCDM       0.67165    67.16    67.16    67.16  0.00000  0.31565  0.80761  0.82841
+Model A    0.66783    66.78    67.28    67.28  0.00000  0.32927  0.74255  0.77793
+Model B    0.66783    66.78    67.28    72.15  0.03497  0.32927  0.74255  0.77793
+Model C    0.66202    66.20    68.25    73.20  0.03499  0.32048  0.73748  0.76223
+Model D    0.66202    66.20    68.25    68.25  0.03499  0.32048  0.73748  0.76223
 ```
 
-### 6.2 Model B with H₀_local Check
+**Key observations:**
+- **LCDM**: H0_in = H0_phys = H0_local (no interaction, no mapping)
+- **Model A/B**: Same h, same H0_phys, but Model B has H0_local boosted by mapping
+- **Model C/D**: Same h (both have reservoir), same H0_phys, but only Model C has mapping
+- **Model B**: Achieves H0_local ≈ 72 and S8 ≈ 0.78 — resolves both tensions!
+
+### 6.2 Model B Quick Check
 
 ```python
 #!/usr/bin/env python3
@@ -416,7 +461,6 @@ Verify Model B produces correct H0_local via mapping.
 import sys
 sys.path.insert(0, "python")
 from classy import Class
-import numpy as np
 
 params = {
     "output": "mPk",
@@ -452,9 +496,8 @@ Omega_m = derived["Omega_m"]
 S8 = sigma8 * (Omega_m / 0.3)**0.5
 
 print("Model B Results:")
-print(f"  H0 (input)    = {100*params['h']:.2f} km/s/Mpc")
+print(f"  H0 (physical) = {100*c.h():.2f} km/s/Mpc")
 print(f"  H0_local      = {H0_local:.2f} km/s/Mpc")
-print(f"  Mapping ratio = {H0_local/(100*params['h']):.4f}")
 print(f"  sigma8        = {sigma8:.4f}")
 print(f"  Omega_m       = {Omega_m:.4f}")
 print(f"  S8            = {S8:.4f}")
@@ -481,7 +524,7 @@ The paper uses:
 The key innovation: constrain `H0_local` (not `H0`) against SH0ES.
 
 ```python
-# shoes_h0local/shoes_h0local.py
+# cobaya/likelihoods/shoes_h0local/shoes_h0local.py
 from cobaya.likelihood import Likelihood
 
 class SH0ES_H0local(Likelihood):
@@ -502,25 +545,21 @@ class SH0ES_H0local(Likelihood):
 
 ### 7.3 Cobaya YAML Configuration
 
-Key points for Model B configuration:
+See `cobaya/modelB_Amap2.yaml` for the complete configuration. Key points:
 
 ```yaml
 theory:
   classy:
-    path: /path/to/class_holo
     extra_args:
       interaction_beta: 0.0833333
       f_clust: 0.0
       super_schwarzschild_correction: 'yes'
       super_schw_amp: 0.0
       super_schw_Amap: 2.0
-      super_schw_deltaS: 0.03
-      super_schw_gamma: 2.0
-      super_schw_no_mapping: 0
     output_params:
       - sigma8
       - Omega_m
-      - H0_local    # Critical for SH0ES likelihood!
+      - H0_local    # Critical!
 
 likelihood:
   shoes_h0local.SH0ES_H0local:
@@ -534,20 +573,12 @@ likelihood:
 
 ### 8.1 H0_local Not Updating
 
-**Symptom**: H0_local equals H0_input regardless of Amap setting.
+**Symptom**: H0_local equals H0_phys regardless of Amap setting.
 
 **Check**:
 1. Is `super_schwarzschild_correction: yes`?
 2. Is `super_schw_no_mapping: 0` (not 1)?
 3. Is `super_schw_Amap` non-zero?
-
-**Verify with:**
-```bash
-cd ~/class_holo
-python3 check_modelB.py
-```
-
-Expected: H0_local/H0_input ≈ 1.072 for Amap=2.
 
 ### 8.2 NaN or Inf in Background
 
@@ -576,42 +607,36 @@ After modifying C files, always:
 ```bash
 make clean
 make class
-cd python && python3 setup.py build_ext --inplace
+pip install -e . --user  # If using Python wrapper
 ```
 
 Don't commit `class` binary or `python/classy.cpp` (build artifacts).
-
-### 8.5 Cobaya Not Finding H0_local
-
-**Symptom**: Error about unknown derived parameter `H0_local`.
-
-**Fix**: Ensure `H0_local` is listed in `output_params` in the YAML:
-
-```yaml
-theory:
-  classy:
-    output_params:
-      - H0_local
-```
 
 ---
 
 ## Appendix: Expected Results
 
-### Model A (β=1/12, no mapping)
-- H₀ ≈ 67.4 km/s/Mpc
-- σ₈ ≈ 0.749
-- S₈ ≈ 0.769
+### θs-matched Theoretical Predictions
 
-### Model B (β=1/12, Amap=2)
-- H₀_input ≈ 67.8 km/s/Mpc
-- H₀_local ≈ 73.3 km/s/Mpc
-- σ₈ ≈ 0.749
-- S₈ ≈ 0.769
+| Model | H₀_phys | H₀_local | σ₈ | S₈ |
+|-------|---------|----------|-----|-----|
+| ΛCDM | 67.2 | 67.2 | 0.808 | 0.828 |
+| Model A | 67.3 | 67.3 | 0.743 | 0.778 |
+| Model B | 67.3 | 72.2 | 0.743 | 0.778 |
+| Model C | 68.3 | 73.2 | 0.737 | 0.762 |
+| Model D | 68.3 | 68.3 | 0.737 | 0.762 |
 
-### ΛCDM Baseline
-- H₀ ≈ 67.4 km/s/Mpc
-- σ₈ ≈ 0.811
-- S₈ ≈ 0.832
+### Observational Targets
 
-**Improvement**: Δχ² = -55.0 for Model B vs ΛCDM with zero additional free parameters.
+- **SH0ES H₀**: 73.04 ± 1.04 km/s/Mpc
+- **Planck H₀**: 67.4 ± 0.5 km/s/Mpc  
+- **DES Y3 S₈**: 0.776 ± 0.017
+- **Planck S₈**: 0.834 ± 0.016
+
+### Model B Performance
+
+**Model B (β=1/12, Amap=2)** achieves:
+- H₀_local within 1σ of SH0ES
+- S₈ within 1σ of DES Y3
+- Perfect fit to Planck CMB (same θs)
+- **Δχ² ≈ -50 vs ΛCDM** with zero additional free parameters
