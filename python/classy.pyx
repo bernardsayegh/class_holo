@@ -3747,6 +3747,8 @@ cdef class Class:
                 value = self.sd.sd_parameter_table[2]
             elif name == 'H0_local':
                 value = self.ba.H0_local * _c_ / 1000.
+            elif name == 'X0_schw':
+                value = self.ba.X0_schw
             else:
                 raise CosmoSevereError("%s was not recognized as a derived parameter" % name)
             derived[name] = value

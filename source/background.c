@@ -2180,7 +2180,7 @@ int background_solve(
   if (pba->has_super_schw_correction == _TRUE_) {
     /* Get X0 and H0_phys from integrated background */
     pba->X0_schw = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_X_schw];
-    double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+    double H0_phys = pba->H0;  /* use input H0 (1/Mpc) as baseline for mapping */
     
     /* Clamp X0_schw to prevent exp overflow / NaN propagation */
     if (pba->X0_schw != pba->X0_schw) pba->X0_schw = 0.0;  /* NaN check */
@@ -2191,7 +2191,7 @@ int background_solve(
     
     /* Apply mapping unless disabled */
     if (pba->super_schw_no_mapping == _TRUE_) {
-      pba->H0_local = H0_phys;
+      pba->H0_local = pba->H0; /* mapping disabled => local equals input */
     } else {
       pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
     }
@@ -2202,7 +2202,7 @@ int background_solve(
     }
   } else {
     pba->X0_schw = 0.0;
-    pba->H0_local = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
+    pba->H0_local = pba->H0; /* SCR off => local equals input */
   }
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
   pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
