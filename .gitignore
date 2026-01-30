@@ -1,21 +1,22 @@
-build/
-*.o
-*.opp
+# Build artifacts
+class
+libclass.a
+*.so
 *.a
-*.pyc
+*.o
+build/
+classy.egg-info/
 __pycache__/
-*.egg-info/
-venv/
-.DS_Store
+python/classy.cpp
+*.pyc
+
+# Output files
 output/
-*.bak.*
-_logs/
-*.pyc
-*.bak.*
-_logs/
-_ff_floor_proof/
-_future_floor_check/
-*.pyc
-__pycache__/
-debug_*.py
-check_*.py
+outputs/
+*.log
+*.dat
+
+# Editor
+.vscode/
+*.swp
+*~
