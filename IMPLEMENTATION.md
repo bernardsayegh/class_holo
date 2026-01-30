@@ -61,15 +61,17 @@ When S > 1, excess energy can be:
 The key to resolving the H₀ tension:
 
 ```
-H₀_local = H₀_phys × exp(Amap × X₀)
+H₀_local = H₀_input × exp(Amap × X₀)
 ```
 
 where:
-- **H₀_phys**: Physical Hubble parameter from Friedmann equation
+- **H₀_input**: Input Hubble parameter (= 100 × h from the input file)
 - **X₀**: Accumulated super-Schwarzschild excess at z=0
 - **Amap = 2**: Mapping amplitude (Model B)
 
-With Amap=2 and typical X₀ ≈ 0.035, this gives H₀_local ≈ 73 km/s/Mpc while H₀_phys ≈ 67.8 km/s/Mpc.
+With Amap=2 and typical X₀ ≈ 0.035, this gives H₀_local ≈ 73 km/s/Mpc while H₀_input ≈ 67.8 km/s/Mpc.
+
+**Physical interpretation**: The mapping represents how local distance ladder measurements (Cepheids, SNe Ia) would infer a higher expansion rate due to the accumulated super-Schwarzschild effects, while the CMB sees the true cosmological H₀.
 
 ### 1.5 Far-Future Completion (κ saturation)
 
@@ -94,12 +96,12 @@ This only activates for a > 1 and S < 1, ensuring no effect on fitted cosmology.
   - Deceleration parameter q and efficiency I_eff
   - Energy transfer Q/H
   - SCR reservoir dynamics (if enabled)
+  - X_schw accumulation for mapping
   - Far-future κ saturation (if enabled)
 
 - **`background_solve()`**: Computes derived quantities
-  - `H0_phys` from integrated background
-  - `X0_schw` from background table
-  - `H0_local = H0_phys * exp(Amap * X0)`
+  - `X0_schw` from background table at a=1
+  - `H0_local = H0_input * exp(Amap * X0)`
 
 ### 2.2 `source/input.c`
 
@@ -145,7 +147,7 @@ This only activates for a > 1 and S < 1, ensuring no effect on fitted cosmology.
 | `super_schw_Amap` | 2 | Mapping amplitude for H₀_local |
 | `super_schw_gamma` | 2.0 | Reservoir decay rate back to CDM |
 | `super_schw_deltaS` | 0.03 | Smoothness of SCR activation around S=1 |
-| `super_schw_no_mapping` | 0 | Set to 1 to disable mapping (H₀_local = H₀_phys) |
+| `super_schw_no_mapping` | 0 | Set to 1 to disable mapping (H₀_local = H₀_input) |
 | `super_schw_kappa` | 0 | Far-future saturation feedback strength |
 
 ---
@@ -275,23 +277,37 @@ double Q_to_cdm_over_H = (1.0 - f_store) * Q_over_H;
 double decay_scr = pba->super_schw_gamma * (1.0 - gS) * rho_scr;
 ```
 
-### 5.3 H₀_local Mapping in `background_solve()`
+### 5.3 X_schw Accumulation
+
+The super-Schwarzschild excess is accumulated during integration:
 
 ```c
-// Get physical H0 from integrated background
-double H0_phys = pvecback[pba->index_bg_H] * _c_ / 1000.0;  // km/s/Mpc
+// X_schw tracks the integrated excess above S=1
+double dX_schw_dlna = gS * frac_ss;  // Only accumulates when S > 1
+```
 
-// Get X0 from background table (sanitized)
+### 5.4 H₀_local Mapping in `background_solve()`
+
+```c
+// Get INPUT H0 (not from integrated background)
+double H0_input = pba->H0 * _c_ / 1000.0;  // km/s/Mpc, = 100 * h
+
+// Get X0 from background table at a=1 (sanitized)
 double X0 = pvecback[pba->index_bg_X_schw];
 if (!isfinite(X0)) X0 = 0.0;
 
-// Apply mapping
+// Store for derived output
+pba->X0_schw = X0;
+
+// Apply mapping (unless disabled)
 if (pba->super_schw_no_mapping == 0) {
-    pba->H0_local = H0_phys * exp(pba->super_schw_Amap * X0);
+    pba->H0_local = H0_input * exp(pba->super_schw_Amap * X0);
 } else {
-    pba->H0_local = H0_phys;
+    pba->H0_local = H0_input;  // No mapping: H0_local = H0_input
 }
 ```
+
+**Key point**: We use `H0_input` (the value from the input file, = 100×h) rather than extracting H₀ from the integrated Friedmann equation. This ensures consistency with how MCMC samplers vary h.
 
 ---
 
@@ -313,9 +329,6 @@ from classy import Class
 from scipy.optimize import brentq
 import numpy as np
 
-# -----------------------------
-# Targets / controls
-# -----------------------------
 THETA_S_TARGET = 1.040423   # target is 100*theta_s
 H_BRACKET = (0.55, 0.80)
 BETA_LCDM = 0.0
@@ -323,7 +336,6 @@ BETA_MODEL_A = 1.0/12.0
 F_CLUST = 0.0
 PKMAX = 10.0
 
-# Explicit late/early-universe defaults for reproducibility
 BASE_PARAMS = {
     "output": "mPk",
     "P_k_max_1/Mpc": PKMAX,
@@ -404,6 +416,7 @@ Verify Model B produces correct H0_local via mapping.
 import sys
 sys.path.insert(0, "python")
 from classy import Class
+import numpy as np
 
 params = {
     "output": "mPk",
@@ -439,8 +452,9 @@ Omega_m = derived["Omega_m"]
 S8 = sigma8 * (Omega_m / 0.3)**0.5
 
 print("Model B Results:")
-print(f"  H0 (physical) = {100*c.h():.2f} km/s/Mpc")
+print(f"  H0 (input)    = {100*params['h']:.2f} km/s/Mpc")
 print(f"  H0_local      = {H0_local:.2f} km/s/Mpc")
+print(f"  Mapping ratio = {H0_local/(100*params['h']):.4f}")
 print(f"  sigma8        = {sigma8:.4f}")
 print(f"  Omega_m       = {Omega_m:.4f}")
 print(f"  S8            = {S8:.4f}")
@@ -467,7 +481,7 @@ The paper uses:
 The key innovation: constrain `H0_local` (not `H0`) against SH0ES.
 
 ```python
-# cobaya/likelihoods/shoes_h0local/shoes_h0local.py
+# shoes_h0local/shoes_h0local.py
 from cobaya.likelihood import Likelihood
 
 class SH0ES_H0local(Likelihood):
@@ -488,21 +502,25 @@ class SH0ES_H0local(Likelihood):
 
 ### 7.3 Cobaya YAML Configuration
 
-See `cobaya/modelB_Amap2.yaml` for the complete configuration. Key points:
+Key points for Model B configuration:
 
 ```yaml
 theory:
   classy:
+    path: /path/to/class_holo
     extra_args:
       interaction_beta: 0.0833333
       f_clust: 0.0
       super_schwarzschild_correction: 'yes'
       super_schw_amp: 0.0
       super_schw_Amap: 2.0
+      super_schw_deltaS: 0.03
+      super_schw_gamma: 2.0
+      super_schw_no_mapping: 0
     output_params:
       - sigma8
       - Omega_m
-      - H0_local    # Critical!
+      - H0_local    # Critical for SH0ES likelihood!
 
 likelihood:
   shoes_h0local.SH0ES_H0local:
@@ -516,12 +534,20 @@ likelihood:
 
 ### 8.1 H0_local Not Updating
 
-**Symptom**: H0_local equals H0_phys regardless of Amap setting.
+**Symptom**: H0_local equals H0_input regardless of Amap setting.
 
 **Check**:
 1. Is `super_schwarzschild_correction: yes`?
 2. Is `super_schw_no_mapping: 0` (not 1)?
 3. Is `super_schw_Amap` non-zero?
+
+**Verify with:**
+```bash
+cd ~/class_holo
+python3 check_modelB.py
+```
+
+Expected: H0_local/H0_input ≈ 1.072 for Amap=2.
 
 ### 8.2 NaN or Inf in Background
 
@@ -550,10 +576,23 @@ After modifying C files, always:
 ```bash
 make clean
 make class
-pip install -e . --user  # If using Python wrapper
+cd python && python3 setup.py build_ext --inplace
 ```
 
 Don't commit `class` binary or `python/classy.cpp` (build artifacts).
+
+### 8.5 Cobaya Not Finding H0_local
+
+**Symptom**: Error about unknown derived parameter `H0_local`.
+
+**Fix**: Ensure `H0_local` is listed in `output_params` in the YAML:
+
+```yaml
+theory:
+  classy:
+    output_params:
+      - H0_local
+```
 
 ---
 
@@ -565,7 +604,7 @@ Don't commit `class` binary or `python/classy.cpp` (build artifacts).
 - S₈ ≈ 0.769
 
 ### Model B (β=1/12, Amap=2)
-- H₀_phys ≈ 67.8 km/s/Mpc
+- H₀_input ≈ 67.8 km/s/Mpc
 - H₀_local ≈ 73.3 km/s/Mpc
 - σ₈ ≈ 0.749
 - S₈ ≈ 0.769
