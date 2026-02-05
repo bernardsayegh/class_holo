@@ -2907,6 +2907,13 @@ cdef class Class:
         """
         return self.ba.H0_local * _c_ / 1000.
 
+
+    def X0_schw(self):
+        '''
+        X0_schw accumulated super-Schwarzschild excess at z=0 (dimensionless).
+        '''
+        return self.ba.X0_schw
+
     def Om_m(self, z):
         """
         Return the fractional density Omega of matter at z

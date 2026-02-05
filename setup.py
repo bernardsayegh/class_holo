@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from Cython.Distutils import build_ext
 
 import numpy as np
@@ -114,14 +114,14 @@ class classy_builder(build_ext):
 
 # Finally, perform the actual setup
 setup(
+    packages=['classy'],
+    package_dir={'': '.'},
     name='classy',
     version=VERSION,
     description='Python interface to the Cosmological Boltzmann code CLASS',
     url='http://www.class-code.net',
     cmdclass={'build_ext': classy_builder},
     ext_modules=[classy_ext],
-    packages = ["classy"],
-    package_dir={"classy":"."},
     package_data={'classy': pck_files},
     include_package_data=True,
     zip_safe=False

@@ -2723,6 +2723,8 @@ int background_derivs(
                       ErrorMsg error_message
                       ) {
 
+  double Q_scr_to_cdm_over_H = 0.0;  /* SCR decay -> CDM (Q/H), default 0 */
+  Q_scr_to_cdm_over_H = 0.0;  /* reset each step */
   /** Summary: */
 
   /** - define local variables */
@@ -2854,6 +2856,8 @@ int background_derivs(
       double beta_eff = pba->interaction_beta * I_eff;
       
       Q_over_H = 4.5 * beta_eff * Omega_de_2f * Omega_m_2f * rho_2f;  /* sweep kernel (two-fluid) */      /* FUTURE_SCHW_KAPPA_BOOST */
+
+      
       /* Future-only Schwarzschild saturation (negative feedback toward S=1)
        *  S ≡ 4.5 Ω_de Ω_m (two-fluid)  ;  S=1 ↔ Ω_m=1/3 or 2/3
        *  We activate only for a>1 (keeps z>=0 unchanged) and only when S<1.
@@ -2889,56 +2893,6 @@ int background_derivs(
        * Strength: super_schw_kappa (default 0.0 => OFF)
        * ------------------------------------------------------------ */
 /* (removed duplicated super_schw_kappa block) */
-
-      
-      double Q_scr_to_cdm_over_H = 0.0;  /* rho_scr decay -> CDM (Q/H) */
-
-      /* Super-Schwarzschild excess accumulation with smooth activation + decay */
-      if (pba->has_super_schw_correction == _TRUE_) {
-
-        /* Defaults every step (critical: avoid stale dy values) */
-        dy[pba->index_bi_X_schw]   = 0.0;
-        dy[pba->index_bi_rho_scr]  = 0.0;
-
-        /* Two-fluid fractions (EXPLICIT; do NOT include rho_scr) */
-        double rho_de_ss = 0.0;
-        if (pba->has_lambda == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_lambda];
-        else if (pba->has_fld == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_fld];
-
-        double rho_m_ss = pvecback[pba->index_bg_rho_b];
-        if (pba->has_cdm == _TRUE_) rho_m_ss += pvecback[pba->index_bg_rho_cdm];
-
-        double rho_2f = rho_de_ss + rho_m_ss;
-
-        if (rho_2f > 0.0) {
-          double Omega_de_2f = rho_de_ss / rho_2f;
-          double Omega_m_2f  = 1.0 - Omega_de_2f;
-          double S_ss        = 4.5 * Omega_de_2f * Omega_m_2f;
-
-          /* Smooth activation: g(S) = 0.5 * (1 + tanh((S-1)/Delta)) */
-          double Delta = pba->super_schw_deltaS;
-          if (Delta <= 0.0) Delta = 0.03;
-          double gS = 0.5 * (1.0 + tanh((S_ss - 1.0) / Delta));
-
-          /* Fractional excess (bounded): only active when S>1 */
-          double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
-
-          /* (A) X accumulation */
-          dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a */
-
-          /* (B) rho_scr reservoir */
-          double rho_scr_now = y[pba->index_bi_rho_scr];
-
-          double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
-          double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
-
-          dy[pba->index_bi_rho_scr] = source_scr - decay_scr;
-
-          /* Energy conserving: decay goes back into CDM */
-          Q_scr_to_cdm_over_H = decay_scr;
-        }
-      }
-
       /* CDM derivative: SINGLE assignment (includes reservoir decay feedback) */
       dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H + Q_scr_to_cdm_over_H;
     }
@@ -2961,7 +2915,56 @@ int background_derivs(
     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
   }
 
-  return _SUCCESS_;
+  
+  /* ---------- Super-Schwarzschild excess (ALWAYS, independent of beta) ---------- */
+        Q_scr_to_cdm_over_H = 0.0;  /* reset each step */
+  
+        if (pba->has_super_schw_correction == _TRUE_) {
+  
+          /* Defaults every step (critical: avoid stale dy values) */
+          dy[pba->index_bi_X_schw]   = 0.0;
+          dy[pba->index_bi_rho_scr]  = 0.0;
+  
+          /* Two-fluid fractions (EXPLICIT; do NOT include rho_scr) */
+          double rho_de_ss = 0.0;
+          if (pba->has_lambda == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_lambda];
+          else if (pba->has_fld == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_fld];
+  
+          double rho_m_ss = pvecback[pba->index_bg_rho_b];
+          if (pba->has_cdm == _TRUE_) rho_m_ss += pvecback[pba->index_bg_rho_cdm];
+  
+          double rho_2f = rho_de_ss + rho_m_ss;
+  
+          if (rho_2f > 0.0) {
+            double Omega_de_2f = rho_de_ss / rho_2f;
+            double Omega_m_2f  = 1.0 - Omega_de_2f;
+            double S_ss        = 4.5 * Omega_de_2f * Omega_m_2f;
+  
+            /* Smooth activation: g(S) = 0.5 * (1 + tanh((S-1)/Delta)) */
+            double Delta = pba->super_schw_deltaS;
+            if (Delta <= 0.0) Delta = 0.03;
+            double gS = 0.5 * (1.0 + tanh((S_ss - 1.0) / Delta));
+  
+            /* Fractional excess (bounded): only active when S>1 */
+            double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
+  
+            /* (A) X accumulation */
+            dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a */
+  
+            /* (B) rho_scr reservoir */
+            double rho_scr_now = y[pba->index_bi_rho_scr];
+            double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
+            double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
+  
+            dy[pba->index_bi_rho_scr] = source_scr - decay_scr;
+  
+            /* Energy conserving: decay goes back into CDM */
+            Q_scr_to_cdm_over_H = decay_scr;
+          }
+        }
+        /* ------------------------------------------------------------------------- */
+
+return _SUCCESS_;
 
 }
 

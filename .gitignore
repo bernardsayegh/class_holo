@@ -20,3 +20,11 @@ outputs/
 .vscode/
 *.swp
 *~
+.venv/
+build/
+*.so
+__pycache__/
+*.pyc
+*.png
+*.pdf
+*.bak.*

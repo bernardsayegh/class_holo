@@ -1,3 +1,5 @@
+make clean || true
+make -j"$(nproc)" class
 # Implementation Guide: Holographic Dark Energy in CLASS
 
 This document provides complete technical documentation for the holographic dark energy implementation, including the physics, code structure, parameters, and validation scripts.
