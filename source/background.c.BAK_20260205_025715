@@ -113,6 +113,7 @@
  */
 
 #include "background.h"
+#include <math.h>
 
 /**
  * Background quantities at given redshift z.
@@ -591,25 +592,56 @@ int background_functions(
     if (pvecback_B != NULL) pvecback[pba->index_bg_rho_scr] = pvecback_B[pba->index_bi_rho_scr];
     else pvecback[pba->index_bg_rho_scr] = 0.;
 
+    /* Model A: mapping-only; disable reservoir contribution when amp==0.
+       This prevents rho_scr from affecting H(z) unless the reservoir is explicitly enabled. */
+    if (pba->super_schw_amp == 0.0) {
+      pvecback[pba->index_bg_rho_scr] = 0.0;
+    }
+
+
+    if (pba->index_bg_Q_scr_to_cdm_over_H >= 0) pvecback[pba->index_bg_Q_scr_to_cdm_over_H] = 0.;
     /* add to totals BEFORE Friedmann so it affects H(z) and q(z) */
     rho_tot += pvecback[pba->index_bg_rho_scr];
     p_tot   += -pvecback[pba->index_bg_rho_scr];
 
     /* keep p_tot_prime consistent: dp_scr/dln a = - d(rho_scr)/dln a */
-    if (a > 0.4) {
+    /* keep p_tot_prime consistent: dp_scr/dln a = - d(rho_scr)/dln a */
+    /* With smooth activation + decay: drho_scr = source - decay */
+    {
       double rho_de_2f = 0.;
       if (pba->has_lambda == _TRUE_) rho_de_2f = pvecback[pba->index_bg_rho_lambda];
       else if (pba->has_fld == _TRUE_) rho_de_2f = pvecback[pba->index_bg_rho_fld];
-
       double rho_m_2f = rho_m;
       double rho_2f   = rho_de_2f + rho_m_2f;
-
       if (rho_2f > 0.) {
         double Omega_de_2f = rho_de_2f / rho_2f;
         double Omega_m_2f  = 1.0 - Omega_de_2f;
         double S_ss    = 4.5 * Omega_de_2f * Omega_m_2f;
+        /* Smooth activation */
+        double Delta = pba->super_schw_deltaS;
+        if (Delta <= 0.) Delta = 0.03;
+        double gS = 0.5 * (1.0 + tanh((S_ss - 1.0) / Delta));
         double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0/S_ss) : 0.0;
-        double drho_scr_dloga = pba->super_schw_amp * rho_2f * frac_ss;
+        double rho_scr_now = pvecback[pba->index_bg_rho_scr];
+        /* Source and decay terms */
+        double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
+        double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
+        /* Export SCR->CDM rate for perturbations (dimensionless):
+           Qdimless(a) = (Q/H)/rho_cdm = decay_scr / rho_cdm, gated to late times and capped for stiffness control. */
+        if (pba->index_bg_Q_scr_to_cdm_over_H >= 0) {
+          double z_here = 1.0/a - 1.0;
+          double rho_cdm_here = (pvecback_B != NULL) ? pvecback_B[pba->index_bi_rho_cdm] : 0.0;
+          double rate = (rho_cdm_here > 0.) ? (decay_scr / rho_cdm_here) : 0.0;
+
+          if (z_here > 0.600001) rate = 0.0;
+
+          const double QCAP = 0.01;
+          if (rate >  QCAP) rate =  QCAP;
+          if (rate < -QCAP) rate = -QCAP;
+
+          pvecback[pba->index_bg_Q_scr_to_cdm_over_H] = rate;
+        }
+        double drho_scr_dloga = source_scr - decay_scr;
         dp_dloga += -drho_scr_dloga;
       }
     }
@@ -1120,6 +1152,7 @@ int background_indices(
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
   class_define_index(pba->index_bg_rho_scr,pba->has_super_schw_correction,index_bg,1);
+  class_define_index(pba->index_bg_Q_scr_to_cdm_over_H,pba->has_super_schw_correction,index_bg,1);
 
   /* - index for fluid */
   class_define_index(pba->index_bg_rho_fld,pba->has_fld,index_bg,1);
@@ -1216,9 +1249,9 @@ int background_indices(
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
+  class_define_index(pba->index_bi_rho_scr,pba->has_super_schw_correction,index_bi,1);
 
   class_define_index(pba->index_bi_X_schw,pba->has_super_schw_correction,index_bi,1);
-  class_define_index(pba->index_bi_rho_scr,pba->has_super_schw_correction,index_bi,1);
 
   /* End of {B} variables */
   pba->bi_B_size = index_bi;
@@ -2145,22 +2178,31 @@ int background_solve(
   
   /* Compute H0_local from super-Schwarzschild correction */
   if (pba->has_super_schw_correction == _TRUE_) {
+    /* Get X0 and H0_phys from integrated background */
     pba->X0_schw = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_X_schw];
-    /* Model A (amp=0): use input H0 for pure mapping interpretation
-       Model C (amp>0): use physical H0 which includes reservoir effect */
-    if (pba->super_schw_amp > 0.) {
-      double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];
-      pba->H0_local = H0_phys * exp(pba->X0_schw);
+    double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];  /* physical H0 from Friedmann */
+    
+    /* Clamp X0_schw to prevent exp overflow / NaN propagation */
+    if (pba->X0_schw != pba->X0_schw) pba->X0_schw = 0.0;  /* NaN check */
+    if (pba->X0_schw > 1e300 || pba->X0_schw < -1e300) pba->X0_schw = 0.0;
+    const double X0_MAX = 0.5;
+    if (pba->X0_schw >  X0_MAX) pba->X0_schw =  X0_MAX;
+    if (pba->X0_schw < -X0_MAX) pba->X0_schw = -X0_MAX;
+    
+    /* Apply mapping unless disabled */
+    if (pba->super_schw_no_mapping == _TRUE_) {
+      pba->H0_local = H0_phys; /* mapping disabled => local equals physical */
     } else {
-      pba->H0_local = pba->H0 * exp(pba->X0_schw);  /* pure mapping, no reservoir */
+      pba->H0_local = H0_phys * exp(pba->super_schw_Amap * pba->X0_schw);
     }
+    
     if (pba->background_verbose > 0) {
-      printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n", 
+      printf(" -> super-Schwarzschild: X0 = %g, H0_local = %g km/s/Mpc\n",
              pba->X0_schw, pba->H0_local * _c_ / 1000.);
     }
   } else {
-    pba->X0_schw = 0.;
-    pba->H0_local = pba->H0;
+    pba->X0_schw = 0.0;
+    pba->H0_local = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H]; /* SCR off => local equals physical */
   }
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
   pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
@@ -2551,6 +2593,10 @@ int background_output_titles(
   class_store_columntitle(titles,"Omega_r(z)",_TRUE_);
   class_store_columntitle(titles,"Omega_m(z)",_TRUE_);
 
+    if (pba->has_super_schw_correction == _TRUE_) {
+      class_store_columntitle(titles,"X_schw",_TRUE_);
+      class_store_columntitle(titles,"(.)rho_scr",_TRUE_);
+    }
   class_store_columntitle(titles,"gr.fac. D",_TRUE_);
   class_store_columntitle(titles,"gr.fac. f",_TRUE_);
 
@@ -2627,6 +2673,10 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_Omega_r],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_Omega_m],_TRUE_,storeidx);
 
+      if (pba->has_super_schw_correction == _TRUE_) {
+        class_store_double(dataptr,pvecback[pba->index_bg_X_schw],_TRUE_,storeidx);
+        class_store_double(dataptr,pvecback[pba->index_bg_rho_scr],_TRUE_,storeidx);
+      }
     class_store_double(dataptr,pvecback[pba->index_bg_D],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_f],_TRUE_,storeidx);
 
@@ -2751,8 +2801,11 @@ int background_derivs(
     if (pba->has_fld == _TRUE_) rho_de = pvecback[pba->index_bg_rho_fld];
     else if (pba->has_lambda == _TRUE_) rho_de = pvecback[pba->index_bg_rho_lambda];
     double rho_tot = pvecback[pba->index_bg_rho_tot];
-    double Omega_de = rho_de / rho_tot;
-    double Omega_m = 1.0 - Omega_de;
+    double Omega_de = (rho_tot > 0.) ? (rho_de / rho_tot) : 0.0;
+
+    /* Matter = baryons + CDM (proper definition, not 1-Omega_de) */
+    double rho_m = pvecback[pba->index_bg_rho_b] + rho_cdm_holo;
+    double Omega_m = (rho_tot > 0.) ? (rho_m / rho_tot) : 0.0;
     
     double Q_over_H = 0.0;
     
@@ -2772,7 +2825,7 @@ int background_derivs(
       /* Safety: avoid division by zero at early times */
       if (alpha < 0.1) alpha = 0.1;
       
-      /* Surface gravity modulation (same as V17) */
+      /* Surface gravity modulation */
       double q_decel = -1.0 + 1.5 * Omega_m;
       double dynamic_term = 1.0 - q_decel;
       if (dynamic_term < 0.0) dynamic_term = 0.0;
@@ -2785,70 +2838,109 @@ int background_derivs(
     else {
       /* ================================================================
        * APPARENT HORIZON MODEL (V17)
-       * Q/H = 4.5 * beta_eff * Omega_de * rho_tot
-       * where beta_eff = beta * I_eff, I_eff = ((1-q)/2)^2
-       * 
-       * Deceleration parameter: q = -1 + 3/2 * Omega_m
-       * Surface gravity scaling: I_eff = ((1-q)/2)^2
+       * Two-fluid sweep kernel with I_eff modulation
        * ================================================================ */
-      double q_decel = -1.0 + 1.5 * Omega_m;
-      double dynamic_term = 1.0 - q_decel;
+      /* Compute matter density from CDM + baryons */
+      double rho_m_2f = rho_cdm_holo + pvecback[pba->index_bg_rho_b];
+      double rho_2f = rho_de + rho_m_2f;
+      double Omega_de_2f = (rho_2f > 0.) ? (rho_de / rho_2f) : 0.0;
+      double Omega_m_2f  = (rho_2f > 0.) ? (rho_m_2f / rho_2f) : 0.0;
+      
+      /* Surface gravity modulation I_eff = ((1-q)/2)^2 */
+      double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
+      double dynamic_term = 1.0 - q_decel_2f;
       if (dynamic_term < 0.0) dynamic_term = 0.0;
       double I_eff = 0.25 * dynamic_term * dynamic_term;
       double beta_eff = pba->interaction_beta * I_eff;
-      Q_over_H = 4.5 * beta_eff * Omega_de * rho_tot;
+      
+      Q_over_H = 4.5 * beta_eff * Omega_de_2f * Omega_m_2f * rho_2f;  /* sweep kernel (two-fluid) */      /* FUTURE_SCHW_KAPPA_BOOST */
+      /* Future-only Schwarzschild saturation (negative feedback toward S=1)
+       *  S ≡ 4.5 Ω_de Ω_m (two-fluid)  ;  S=1 ↔ Ω_m=1/3 or 2/3
+       *  We activate only for a>1 (keeps z>=0 unchanged) and only when S<1.
+       *  super_schw_kappa controls strength. Cap must allow boost_*≈14.22 for β=1/12.
+       */
+      if (pba->super_schw_kappa > 0.0) {
+        double S = 4.5 * Omega_de_2f * Omega_m_2f;
+        if (S < 1e-12) S = 1e-12;
+
+        /* One-sided activation: only when trying to go below the critical surface S=1 */
+        {
+          double a_star = 1.001;   /* just above a=1 so z>=0 is EXACTLY unaffected */
+          double Da     = 0.002;   /* sharp but smooth */
+          double DS     = 0.02;
+
+          double g_fut = 0.0;                               /* future gate */
+          if (a > 1.0) g_fut = 0.5 * (1.0 + tanh((a - a_star) / Da));
+          double g_lt  = 0.5 * (1.0 + tanh((1.0 - S) / DS));         /* activates for S<1 */
+
+          /* Negative feedback: as S falls below 1, boost rises ~ (1/S - 1) to hold S→1 */
+          double boost = 1.0 + pba->super_schw_kappa * g_fut * g_lt * (1.0 / S - 1.0);
+
+          /* Stability caps (must be >= ~14.3 if you want Ωm→1/3 for β=1/12) */
+          if (boost > 20.0) boost = 20.0;
+          if (boost < 0.0)  boost = 0.0;
+
+          Q_over_H *= boost;
+        }
+      }
+      /* ------------------------------------------------------------
+       * Future-only Schwarzschild saturation: boost sweep when S<1
+       * Gate: a > 1.05 (keeps z>=0 essentially unchanged).
+       * Strength: super_schw_kappa (default 0.0 => OFF)
+       * ------------------------------------------------------------ */
+/* (removed duplicated super_schw_kappa block) */
+
+      
+      double Q_scr_to_cdm_over_H = 0.0;  /* rho_scr decay -> CDM (Q/H) */
 
       /* Super-Schwarzschild excess accumulation with smooth activation + decay */
       if (pba->has_super_schw_correction == _TRUE_) {
-        double Q_scr_to_cdm_over_H = 0.0;  /* energy transfer to CDM */
-        
-        /* Two-fluid fractions */
-        double rho_de_ss = Omega_de * rho_tot;
-        double rho_m_ss  = Omega_m * rho_tot;
-        double rho_2f    = rho_de_ss + rho_m_ss;
-        
-        if (rho_2f > 0.) {
+
+        /* Defaults every step (critical: avoid stale dy values) */
+        dy[pba->index_bi_X_schw]   = 0.0;
+        dy[pba->index_bi_rho_scr]  = 0.0;
+
+        /* Two-fluid fractions (EXPLICIT; do NOT include rho_scr) */
+        double rho_de_ss = 0.0;
+        if (pba->has_lambda == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_lambda];
+        else if (pba->has_fld == _TRUE_) rho_de_ss = pvecback[pba->index_bg_rho_fld];
+
+        double rho_m_ss = pvecback[pba->index_bg_rho_b];
+        if (pba->has_cdm == _TRUE_) rho_m_ss += pvecback[pba->index_bg_rho_cdm];
+
+        double rho_2f = rho_de_ss + rho_m_ss;
+
+        if (rho_2f > 0.0) {
           double Omega_de_2f = rho_de_ss / rho_2f;
           double Omega_m_2f  = 1.0 - Omega_de_2f;
           double S_ss        = 4.5 * Omega_de_2f * Omega_m_2f;
-          
+
           /* Smooth activation: g(S) = 0.5 * (1 + tanh((S-1)/Delta)) */
           double Delta = pba->super_schw_deltaS;
-          if (Delta <= 0.) Delta = 0.03;
+          if (Delta <= 0.0) Delta = 0.03;
           double gS = 0.5 * (1.0 + tanh((S_ss - 1.0) / Delta));
-          
-          /* Fractional excess */
+
+          /* Fractional excess (bounded): only active when S>1 */
           double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
-          
-          /* (A) X accumulation: self-selected by S */
-          dy[pba->index_bi_X_schw] = gS * frac_ss;   /* dX/dln a */
-          
-          /* (B) rho_scr: source while active, decay after window */
+
+          /* (A) X accumulation */
+          dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a */
+
+          /* (B) rho_scr reservoir */
           double rho_scr_now = y[pba->index_bi_rho_scr];
-          
-          /* Source term (only when active) */
+
           double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
-          
-          /* Decay/relaxation after window: Gamma/H = super_schw_gamma */
-          double decay_scr = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
-          
-          /* rho_scr evolution */
+          double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
+
           dy[pba->index_bi_rho_scr] = source_scr - decay_scr;
-          
-          /* Energy-conserving: decay goes to CDM */
+
+          /* Energy conserving: decay goes back into CDM */
           Q_scr_to_cdm_over_H = decay_scr;
         }
-        else {
-          dy[pba->index_bi_X_schw] = 0.0;
-          dy[pba->index_bi_rho_scr] = 0.0;
-        }
-        
-        /* Add reservoir decay to CDM (energy conservation) */
-        dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H + Q_scr_to_cdm_over_H;
       }
-      else {
-        dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H;
-      }
+
+      /* CDM derivative: SINGLE assignment (includes reservoir decay feedback) */
+      dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H + Q_scr_to_cdm_over_H;
     }
   }
 
