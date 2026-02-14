@@ -1,4 +1,3 @@
-cd /workspaces/class_holo && python3 << 'SCRIPT'
 import sys
 sys.path.insert(0, 'python')
 from classy import Class
@@ -157,4 +156,3 @@ print("Saved: spectra_combined.png/pdf")
 
 lcdm.struct_cleanup(); lcdm.empty()
 holo.struct_cleanup(); holo.empty()
-SCRIPT
