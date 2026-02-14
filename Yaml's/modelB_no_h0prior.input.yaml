@@ -1,0 +1,106 @@
+theory:
+  classy:
+    extra_args:
+      interaction_beta: 0.0833333
+      f_clust: 0.0
+      super_schwarzschild_correction: 'yes'
+      super_schw_amp: 0.0
+      super_schw_deltaS: 0.03
+      super_schw_gamma: 2.0
+      super_schw_Amap: 2.0
+      non_linear: hmcode
+      YHe: 0.2454
+likelihood:
+  planck_2018_highl_plik.TTTEEE: null
+  planck_2018_lowl.TT: null
+  planck_2018_lowl.EE: null
+  planck_2018_lensing.clik: null
+  bao.sdss_dr12_consensus_full_shape: null
+  bao.sdss_dr16_baoplus_qso: null
+  bao.sdss_dr16_baoplus_elg: null
+  bao.sdss_dr16_baoplus_lyauto: null
+  bao.sdss_dr16_baoplus_lyxqso: null
+  bao.sdss_dr7_mgs: null
+  bao.sixdf_2011_bao: null
+  sn.pantheonplus: null
+  desy3_likelihood.DESY3:
+    python_path: /Users/Bernard_1/holographic_mcmc
+    data_path: /Users/Bernard_1/holographic_mcmc/des_y3_data/likelihood/des-y3
+params:
+  omega_b:
+    prior:
+    - 0.019
+    - 0.025
+    ref: 0.02237
+    proposal: 0.0003
+    latex: \omega_b
+  omega_cdm:
+    prior:
+    - 0.095
+    - 0.145
+    ref: 0.12
+    proposal: 0.003
+    latex: \omega_{cdm}
+  H0:
+    prior:
+    - 60
+    - 80
+    ref: 68.0
+    proposal: 1.0
+    latex: H_0
+  logA:
+    prior:
+    - 2.7
+    - 3.4
+    ref: 3.044
+    proposal: 0.02
+    latex: \log(10^{10}A_s)
+    drop: true
+  A_s:
+    value: 'lambda logA: 1e-10*np.exp(logA)'
+    latex: A_s
+  n_s:
+    prior:
+    - 0.9
+    - 1.05
+    ref: 0.9649
+    proposal: 0.008
+    latex: n_s
+  tau_reio:
+    prior:
+    - 0.01
+    - 0.12
+    ref: 0.0544
+    proposal: 0.01
+    latex: \tau_{reio}
+  A_IA:
+    prior:
+    - -5.0
+    - 5.0
+    ref: 0.0
+    proposal: 0.5
+    latex: A_{IA}
+  alpha_IA:
+    prior:
+    - -5.0
+    - 5.0
+    ref: 0.0
+    proposal: 0.5
+    latex: \alpha_{IA}
+  sigma8:
+    latex: \sigma_8
+  Omega_m:
+    latex: \Omega_m
+  H0_local:
+    latex: H_0^{local}
+  S8:
+    derived: 'lambda sigma8, Omega_m: sigma8*np.sqrt(Omega_m/0.3)'
+    latex: S_8
+sampler:
+  mcmc:
+    Rminus1_stop: 0.01
+    max_tries: 10000
+    learn_proposal: true
+    output_every: 60s
+output: modelB_no_h0prior
+packages_path: /Users/Bernard_1/holographic_mcmc/packages
