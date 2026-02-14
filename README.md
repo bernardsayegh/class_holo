@@ -22,62 +22,42 @@ Model B (β = 1/12, A_map = 2) simultaneously resolves the H₀ tension (H₀,lo
 
 ## Repository structure
 
-```
+````
 class_holo/
-├── source/                       # Modified CLASS C source (background + perturbations)
-├── python/                       # Python wrapper (classy)
+├── README.md
+├── IMPLEMENTATION.md
 ├── configs/                      # Cobaya YAML configuration files
 │   ├── lcdm_shoes.input.yaml
-│   ├── lcdm_no_h0prior.input.yaml
-│   ├── lcdm_trgb.input.yaml
-│   ├── modelA_fixed.input.yaml
-│   ├── modelA_f1.input.yaml
-│   ├── modelA_f_free.input.yaml
-│   ├── modelA_beta_free.input.yaml
 │   ├── modelB_Amap2.input.yaml
-│   ├── modelB_Amap1.input.yaml
-│   ├── modelB_Amap_free.input.yaml
-│   ├── modelB_beta_free.input.yaml
-│   ├── modelB_no_h0prior.input.yaml
-│   ├── modelB_trgb.input.yaml
-│   ├── modelC_theory.input.yaml
-│   ├── modelC_amp_free.input.yaml
-│   ├── modelD_theory.input.yaml
-│   ├── modelD_amp_free.input.yaml
-│   ├── acdm_Amap_free.input.yaml
-│   └── acdm_mapping_Amap2.input.yaml
-├── likelihoods/                  # Custom likelihood modules
+│   └── ...                       # 19 YAML files total
+├── cobaya/likelihoods/shoes_h0local/
+│   ├── shoes_h0local.py
 │   ├── desy3_likelihood.py
-│   ├── desy3_likelihood_h0local.py
-│   └── shoes_h0local.py
-├── scripts/                      # Plotting and analysis scripts
-│   ├── plot_evolution_combined.py
-│   ├── plot_holographic_data_bracket_expanded.py
-│   ├── plot_spectra_combined.py
-│   ├── plot_contours_combined.py
-│   ├── plot_posteriors.py
-│   ├── plot_S8_combined.py
-│   ├── plot_triangle_S8_Om_H0.py
-│   ├── plot_fsigma8_comparison.py
-│   ├── plot_desi_bao_combined.py
-│   ├── cosmo_stats_thetas_matched.py   # Validation diagnostic
-│   └── check_acdm_mapping.py           # acdm control test
-└── README.md
+│   └── desy3_likelihood_h0local.py
+├── plotting/                     # Plotting and validation scripts
+│   ├── plot_*.py                 # 9 figure scripts
+│   ├── cosmo_stats_thetas_matched.py
+│   └── check_acdm_mapping.py
+├── source/                       # Modified CLASS C source
+├── include/                      # Modified CLASS headers
+├── python/                       # Python wrapper (classy)
+├── scripts/                      # Original CLASS example scripts
+└── ...                           # Standard CLASS directories
 ```
-
----
-
-## Installation
-
-### Build CLASS
-
-```bash
-git clone https://github.com/bernardsayegh/class_holo.git
-cd class_holo
-make clean
-rm -rf classy classy_bak
-make -j4
-cd python && python3 setup.py build_ext --inplace && cd ..
+class_holo/
+├── README.md
+├── IMPLEMENTATION.md
+├── configs/                      # 19 Cobaya YAML files
+├── cobaya/likelihoods/shoes_h0local/
+│   ├── shoes_h0local.py
+│   ├── desy3_likelihood.py
+│   └── desy3_likelihood_h0local.py
+├── plotting/                     # 9 plot scripts + 3 validation scripts
+├── source/                       # Modified CLASS C source
+├── include/                      # Modified CLASS headers
+├── python/                       # Python wrapper (classy)
+├── scripts/                      # Original CLASS example scripts
+└── ...                           # Standard CLASS directories
 ```
 
 ### Verify
@@ -100,7 +80,7 @@ print(f'OK: sigma8={c.sigma8():.4f}')
 A more thorough check that holographic braking and geometric mapping are working correctly. Fixes ω_b, ω_cdm to Planck 2018 values and solves for h such that 100×θₛ = 1.040423 in each model. (Note: h values differ from MCMC best-fits because the MCMC varies all parameters simultaneously.)
 
 ```bash
-python3 scripts/cosmo_stats_thetas_matched.py
+python3 plotting/cosmo_stats_thetas_matched.py
 ```
 
 Expected output:
@@ -147,7 +127,7 @@ What to check:
 Confirms that the geometric mapping does nothing without holographic braking:
 
 ```bash
-python3 scripts/check_acdm_mapping.py
+python3 plotting/check_acdm_mapping.py
 ```
 
 Compares ΛCDM, acdm (Amap=2, β=0), Model A (β=1/12), and Model B (Amap=2, β=1/12) at fixed h, printing H₀, H₀,loc, σ₈, S₈, S₈,loc, Ωₘ, Ωₘ,loc, and X₀. What to check:
@@ -173,7 +153,7 @@ cobaya-install cosmo --packages-path packages
 
 ### DES-Y3 data
 
-The DES-Y3 2pt data file (`2pt_NG_final_2ptunblind_02_24_21_wnz_covupdate.v2.fits`) is too large for GitHub. Download from the [DES Data Release](https://des.ncsa.illinois.edu/releases/y3a2) and place in the `likelihoods/` directory.
+The DES-Y3 2pt data file (`2pt_NG_final_2ptunblind_02_24_21_wnz_covupdate.v2.fits`) is too large for GitHub. Download from the [DES Data Release](https://des.ncsa.illinois.edu/releases/y3a2) and place in the `cobaya/likelihoods/shoes_h0local/` directory.
 
 ---
 
@@ -230,7 +210,7 @@ Gaussian likelihood on H₀,loc (the locally-measured Hubble constant output by 
 All scripts are standalone. Run from the repository root with CLASS on the Python path:
 
 ```bash
-PYTHONPATH=python python3 scripts/<script>.py
+PYTHONPATH=python python3 plotting/<script>.py
 ```
 
 Scripts that load MCMC chains (getdist) expect a `chains_schw/` directory with converged chains.
