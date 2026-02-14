@@ -1,30 +1,24 @@
 # Build artifacts
 class
 libclass.a
-*.so
-*.a
 *.o
-build/
+*.a
+
+# Python
+classy/
 classy.egg-info/
 __pycache__/
-python/classy.cpp
 *.pyc
-
-# Output files
-output/
-outputs/
-*.log
-*.dat
-
-# Editor
-.vscode/
-*.swp
-*~
-.venv/
-build/
 *.so
-__pycache__/
-*.pyc
-*.png
-*.pdf
-*.bak.*
+python/classy.cpp
+python/build/
+build/
+
+# Environments
+.venv/
+venv/
+
+# Backups
+*.BAK*
+*.backup*
+*.bak
