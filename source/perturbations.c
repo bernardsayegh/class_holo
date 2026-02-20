@@ -9323,15 +9323,36 @@ if (pba->has_super_schw_correction == _TRUE_ &&
           Q_over_rho = 3.0 * beta_eff * correction * a_prime_over_a * Omega_de / Omega_cdm;
         }
         else {
-          /* APPARENT HORIZON (V17): Surface gravity modulation */
-          double p_tot = pvecback[pba->index_bg_p_tot];
-          double w_eff = p_tot / rho_tot;
-          double q_decel = 0.5 * (1.0 + 3.0 * w_eff);
-          double dynamic_term = 1.0 - q_decel;
+          /* APPARENT HORIZON (V17): Two-fluid sweep kernel
+           *
+           * Must match background.c:
+           *   Q/H = 4.5 * beta_eff * Omega_de_2f * Omega_m_2f * rho_2f
+           * where two-fluid = CDM + baryons + DE (no radiation/neutrinos).
+           *
+           * Therefore: aQ/rho_cdm = (a'/a) * 4.5 * beta_eff
+           *            * Omega_de_2f * Omega_m_2f * rho_2f / rho_cdm
+           *
+           * I_eff uses two-fluid q = -1 + 1.5*Omega_m_2f (matching background.c)
+           * NOT total w_eff (which includes radiation/neutrino pressure).
+           *
+           * FIX: Previous code used Omega_de/Omega_cdm (total fractions)
+           * which overestimates the perturbation coupling by ~1/Omega_m_2f.
+           */
+          double rho_cdm_pert = pvecback[pba->index_bg_rho_cdm];
+          double rho_b_pert   = pvecback[pba->index_bg_rho_b];
+          double rho_m_2f     = rho_cdm_pert + rho_b_pert;
+          double rho_2f       = rho_de + rho_m_2f;
+          double Omega_de_2f  = (rho_2f > 0.) ? (rho_de / rho_2f) : 0.0;
+          double Omega_m_2f   = (rho_2f > 0.) ? (rho_m_2f / rho_2f) : 0.0;
+
+          double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
+          double dynamic_term = 1.0 - q_decel_2f;
           if (dynamic_term < 0.0) dynamic_term = 0.0;
           double I_eff = 0.25 * dynamic_term * dynamic_term;
           double beta_eff = pba->interaction_beta * I_eff;
-          Q_over_rho = 4.5 * beta_eff * a_prime_over_a * Omega_de / Omega_cdm;
+
+          Q_over_rho = 4.5 * beta_eff * a_prime_over_a
+                     * Omega_de_2f * Omega_m_2f * rho_2f / rho_cdm_pert;
         }
 
         /* Mode filter: AH-based or k_eq-based */
