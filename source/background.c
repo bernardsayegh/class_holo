@@ -675,8 +675,12 @@ int background_functions(
 
   /** - compute relativistic density to total density ratio */
   /* Store integrated super-Schwarzschild excess (rho_scr already added pre-Friedmann) */
-  if (pba->has_super_schw_correction == _TRUE_ && pvecback_B != NULL) {
-    pvecback[pba->index_bg_X_schw] = pvecback_B[pba->index_bi_X_schw];
+  if (pba->has_super_schw_correction == _TRUE_) {
+    if (pvecback_B != NULL) {
+      pvecback[pba->index_bg_X_schw] = pvecback_B[pba->index_bi_X_schw];
+    } else {
+      pvecback[pba->index_bg_X_schw] = 0.0;
+    }
   }
   
   pvecback[pba->index_bg_Omega_r] = rho_r / rho_crit;
@@ -2183,8 +2187,10 @@ int background_solve(
     double H0_phys = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_H];  /* physical H0 from Friedmann */
     
     /* Clamp X0_schw to prevent exp overflow / NaN propagation */
-    if (pba->X0_schw != pba->X0_schw) pba->X0_schw = 0.0;  /* NaN check */
-    if (pba->X0_schw > 1e300 || pba->X0_schw < -1e300) pba->X0_schw = 0.0;
+    /* Clamp X0_schw to prevent exp overflow / NaN propagation */
+    if (!isfinite(pba->X0_schw)) {
+      pba->X0_schw = 0.0;
+    }
     const double X0_MAX = 0.5;
     if (pba->X0_schw >  X0_MAX) pba->X0_schw =  X0_MAX;
     if (pba->X0_schw < -X0_MAX) pba->X0_schw = -X0_MAX;
@@ -2848,11 +2854,30 @@ int background_derivs(
       double Omega_de_2f = (rho_2f > 0.) ? (rho_de / rho_2f) : 0.0;
       double Omega_m_2f  = (rho_2f > 0.) ? (rho_m_2f / rho_2f) : 0.0;
       
-      /* Surface gravity modulation I_eff = ((1-q)/2)^2 */
+      /* Surface gravity modulation */
       double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
-      double dynamic_term = 1.0 - q_decel_2f;
-      if (dynamic_term < 0.0) dynamic_term = 0.0;
-      double I_eff = 0.25 * dynamic_term * dynamic_term;
+      double I_eff;
+      if (pba->interaction_ieff_type == 1) {
+        double denom = 2.0 - q_decel_2f;
+        double kr = (denom > 0.01) ? (3.0 / denom) : 300.0;
+        I_eff = kr * kr;
+      } else if (pba->interaction_ieff_type == 2) {
+        double denom = 2.0 - q_decel_2f;
+        I_eff = (denom > 0.01) ? (3.0 / denom) : 300.0;
+      } else if (pba->interaction_ieff_type == 3) {
+        /* Screened coupling: I_eff = (1/4 + 3/4*Omega_de)^2 */
+        double screen = 0.25 + 0.75 * Omega_de_2f;
+        I_eff = screen * screen;
+      } else if (pba->interaction_ieff_type == 4) {
+        /* Unsquared: I_eff = (1-q)/2 */
+        double dynamic_term = 1.0 - q_decel_2f;
+        if (dynamic_term < 0.0) dynamic_term = 0.0;
+        I_eff = 0.5 * dynamic_term;
+      } else {
+        double dynamic_term = 1.0 - q_decel_2f;
+        if (dynamic_term < 0.0) dynamic_term = 0.0;
+        I_eff = 0.25 * dynamic_term * dynamic_term;
+      }
       double beta_eff = pba->interaction_beta * I_eff;
       
       Q_over_H = 4.5 * beta_eff * Omega_de_2f * Omega_m_2f * rho_2f;  /* sweep kernel (two-fluid) */      /* FUTURE_SCHW_KAPPA_BOOST */
@@ -2894,7 +2919,7 @@ int background_derivs(
        * ------------------------------------------------------------ */
 /* (removed duplicated super_schw_kappa block) */
       /* CDM derivative: SINGLE assignment (includes reservoir decay feedback) */
-      dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H + Q_scr_to_cdm_over_H;
+      dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H;
     }
   }
 
@@ -2949,7 +2974,15 @@ int background_derivs(
             double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
   
             /* (A) X accumulation */
-            dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a */
+            if (pba->super_schw_ode == 1) {
+              /* ODE: dPsi/dlna = -(1+q)(Psi + Delta) where Delta = gS*frac_ss */
+              double q_decel_ss = -1.0 + 1.5 * Omega_m_2f;
+              double qp1 = 1.0 + q_decel_ss;
+              double X_now = y[pba->index_bi_X_schw];
+              dy[pba->index_bi_X_schw] = qp1 * gS * frac_ss - qp1 * X_now;
+            } else {
+              dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a (accumulator) */
+            }
   
             /* (B) rho_scr reservoir */
             double rho_scr_now = y[pba->index_bi_rho_scr];
@@ -2960,6 +2993,11 @@ int background_derivs(
   
             /* Energy conserving: decay goes back into CDM */
             Q_scr_to_cdm_over_H = decay_scr;
+
+            /* Apply reservoir feedback to CDM (must be here, after computation) */
+            if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm >= 0)) {
+              dy[pba->index_bi_rho_cdm] += Q_scr_to_cdm_over_H;
+            }
           }
         }
         /* ------------------------------------------------------------------------- */

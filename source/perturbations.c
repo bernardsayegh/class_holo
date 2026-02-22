@@ -9346,9 +9346,29 @@ if (pba->has_super_schw_correction == _TRUE_ &&
           double Omega_m_2f   = (rho_2f > 0.) ? (rho_m_2f / rho_2f) : 0.0;
 
           double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
-          double dynamic_term = 1.0 - q_decel_2f;
-          if (dynamic_term < 0.0) dynamic_term = 0.0;
-          double I_eff = 0.25 * dynamic_term * dynamic_term;
+          double I_eff;
+          if (pba->interaction_ieff_type == 1) {
+            double denom = 2.0 - q_decel_2f;
+            double kr = (denom > 0.01) ? (3.0 / denom) : 300.0;
+            I_eff = kr * kr;
+          } else if (pba->interaction_ieff_type == 2) {
+            double denom = 2.0 - q_decel_2f;
+            I_eff = (denom > 0.01) ? (3.0 / denom) : 300.0;
+          } else if (pba->interaction_ieff_type == 3) {
+            /* Screened coupling: I_eff = (1/4 + 3/4*Omega_de)^2 */
+            double Omega_de_2f = 1.0 - Omega_m_2f;
+            double screen = 0.25 + 0.75 * Omega_de_2f;
+            I_eff = screen * screen;
+          } else if (pba->interaction_ieff_type == 4) {
+            /* Unsquared: I_eff = (1-q)/2 */
+            double dynamic_term = 1.0 - q_decel_2f;
+            if (dynamic_term < 0.0) dynamic_term = 0.0;
+            I_eff = 0.5 * dynamic_term;
+          } else {
+            double dynamic_term = 1.0 - q_decel_2f;
+            if (dynamic_term < 0.0) dynamic_term = 0.0;
+            I_eff = 0.25 * dynamic_term * dynamic_term;
+          }
           double beta_eff = pba->interaction_beta * I_eff;
 
           Q_over_rho = 4.5 * beta_eff * a_prime_over_a

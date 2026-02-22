@@ -2716,12 +2716,14 @@ int input_read_parameters_species(struct file_content * pfc,
   /* Read */
   class_read_double("Omega_k",pba->Omega0_k);
   class_read_double("interaction_beta",pba->interaction_beta);
+  { double tmp_ieff=0; class_read_double("interaction_ieff_type",tmp_ieff); pba->interaction_ieff_type=(int)(tmp_ieff+0.5); }
   
   /* Super-Schwarzschild H0 correction */
   class_read_flag("super_schwarzschild_correction", pba->has_super_schw_correction);
   class_read_double("super_schw_amp", pba->super_schw_amp);
   class_read_double("super_schw_deltaS", pba->super_schw_deltaS);
   class_read_double("super_schw_gamma", pba->super_schw_gamma);
+  class_read_int("super_schw_ode", pba->super_schw_ode);
   class_read_double("super_schw_kappa", pba->super_schw_kappa);
     class_read_int("super_schw_no_mapping", pba->super_schw_no_mapping);
     class_read_double("super_schw_Amap", pba->super_schw_Amap);
@@ -5920,10 +5922,12 @@ int input_default_params(struct background *pba,
   pba->Omega0_fld = 0.;
   pba->Omega0_scf = 0.;
   pba->interaction_beta = 0.;  /**< default: no holographic interaction */
+  pba->interaction_ieff_type = 0;
   pba->has_super_schw_correction = _FALSE_; /**< default: no super-Schwarzschild correction */
   pba->super_schw_amp = 1.0;                 /**< default: unit amplitude */
   pba->super_schw_deltaS = 0.03;             /**< default: smooth activation width */
   pba->super_schw_gamma = 1.0;               /**< default: decay rate = 1 Hubble time */
+  pba->super_schw_ode = 0;                   /**< default: accumulator mode */
   pba->super_schw_kappa = 0.0;               /**< default: off */
   pba->interaction_use_particle_horizon = _FALSE_; /**< default: use apparent horizon 9/4 */
   pba->f_clust = 0.;          /**< default: no clustering (full perturbation damping) */
