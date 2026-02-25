@@ -2974,14 +2974,17 @@ int background_derivs(
             double frac_ss = (S_ss > 1.0) ? (1.0 - 1.0 / S_ss) : 0.0;
   
             /* (A) X accumulation */
-            if (pba->super_schw_ode == 1) {
-              /* ODE: dPsi/dlna = -(1+q)(Psi + Delta) where Delta = gS*frac_ss */
+            if (pba->super_schw_ode == 2) {
+              /* No-decay ODE: dPsi/dlna = -(1+q)*Delta — source weighted, no dilution */
+              double q_decel_ss = -1.0 + 1.5 * Omega_m_2f;
+              double qp1 = 1.0 + q_decel_ss;
+              dy[pba->index_bi_X_schw] = qp1 * gS * frac_ss;
+            } else {
+              /* ODE with dilution (default): dPsi/dlna = -(1+q)(Psi + Delta) */
               double q_decel_ss = -1.0 + 1.5 * Omega_m_2f;
               double qp1 = 1.0 + q_decel_ss;
               double X_now = y[pba->index_bi_X_schw];
               dy[pba->index_bi_X_schw] = qp1 * gS * frac_ss - qp1 * X_now;
-            } else {
-              dy[pba->index_bi_X_schw] = gS * frac_ss;  /* dX/dln a (accumulator) */
             }
   
             /* (B) rho_scr reservoir */
