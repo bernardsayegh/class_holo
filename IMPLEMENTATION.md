@@ -87,28 +87,43 @@ When S > 1, excess energy can be:
 1. **Stored** in a reservoir ρ_scr (controlled by `super_schw_amp`)
 2. **Mapped** to a local H₀ inference (controlled by `super_schw_Amap`)
 
-### 1.5 X_schw: Accumulator vs ODE
+### 1.5 X_schw: ODE Formulations
 
-The dimensionless super-Schwarzschild excess X determines the H₀ mapping strength. Two formulations are implemented, selected by `super_schw_ode`:
+The dimensionless super-Schwarzschild excess X determines the H₀ mapping strength. Three formulations are implemented, selected by `super_schw_ode`:
 
-**Accumulator (super_schw_ode = 0, default):**
-```
-dX/d(ln a) = max(S − 1, 0)
-```
-Monotonic integral of the excess. X₀ ≈ 0.030 at z=0. No dilution — physically motivated by the argument that entropy deficits accumulate irreversibly and the distance ladder reads a path integral.
-
-**ODE (super_schw_ode = 1):**
+**ODE with dilution (super_schw_ode = 1):**
 ```
 dΨ/d(ln a) = −(1+q)(Ψ + Δ)
 where Δ = max(S − 1, 0)
 ```
-Standard perturbation equation with dilution term (1+q)Ψ. Gives |Ψ| ≈ 0.019 at z=0 — smaller than the accumulator because the growing background horizon energy dilutes the perturbation.
+Standard perturbation equation derived from perturbing the Misner-Sharp energy: define δE = −ΨE⁰, take the product rule, use d(ln E⁰)/d(ln a) = 1+q. The dilution term (1+q)Ψ arises because the background horizon energy grows — a fixed absolute perturbation becomes a smaller fractional departure. Gives |Ψ| ≈ 0.022 at z=0.
+
+**ODE without dilution (super_schw_ode = 2):**
+```
+dΨ/d(ln a) = −(1+q)Δ
+```
+Retains the (1+q) source weighting (horizon growth rate determines how much unprocessed flux is produced per e-fold) but drops the dilution term. Physically: the source *should* scale with horizon growth, but the accumulated record doesn't decay because once entropy is produced it is permanent (second law). The denominator against which Ψ is normalised is fixed at the time of production, not updating with E⁰. Gives |Ψ| ≈ 0.027 at z=0 — intermediate between full ODE and accumulator.
+
+**Accumulator (super_schw_ode = 0, legacy):**
+```
+dX/d(ln a) = Δ
+```
+Pure monotonic integral of the excess — no (1+q) weighting, no dilution. X₀ ≈ 0.035 at z=0. Treats X as a raw entropy ledger rather than a geometric perturbation. Retained for backward compatibility and comparison with earlier results.
+
+**Diagnostic comparison (β=1/12, unsquared, Amap=2):**
+
+| Mode | X₀ | H₀_loc (Amap=2) |
+|------|------|-----------------|
+| Accumulator (ode=0) | 0.0355 | ~72.6 |
+| ODE no-decay (ode=2) | 0.0266 | ~71.6 |
+| ODE with dilution (ode=1) | 0.0225 | ~71.1 |
+
+σ₈ and S₈ are identical across all three modes — X₀ only affects the mapping, not perturbations.
 
 **Theoretical comparison:**
-- ODE: Every step follows from standard perturbation theory (product rule on δE = −ΨE⁰). Most conservative, easiest to justify to referees.
-- Accumulator: Requires additional physical arguments (entropy accumulation, path-integral distance ladder, separate-universe comparison). Gives stronger H₀ mapping.
-
-Both formulations yield Amap=2 as the data-preferred value. The ODE's analytically predicted Amap ≈ 3.2 (to compensate for smaller |Ψ|) is rejected by data.
+- **ODE with dilution**: Most conservative. Every step is standard perturbation theory. Ψ is a fractional perturbation δE/E⁰ and the denominator updates as E⁰ grows. Easiest to justify to referees.
+- **ODE without dilution**: Intermediate. Source weighted by horizon growth rate (physical), but accumulated record is permanent (entropy monotonicity). Ψ tracks cumulative entropy production whose geometric significance is fixed at production time.
+- **Accumulator**: Strongest mapping. Treats X as a pure bookkeeping quantity with no geometric weighting. Requires additional physical arguments (path-integral distance ladder, separate-universe comparison).
 
 ### 1.6 H₀_local Mapping
 
@@ -120,12 +135,13 @@ H₀_local = H₀_phys × exp(Amap × X₀)
 
 where:
 - **H₀_phys**: Physical Hubble parameter from the integrated Friedmann equation (what CMB measures)
-- **X₀**: Accumulated super-Schwarzschild excess at z=0 (from accumulator or ODE)
-- **Amap**: Mapping amplitude (theory predicts Amap=2 for accumulator)
+- **X₀**: Super-Schwarzschild excess at z=0 (from ODE with dilution, ODE no-decay, or accumulator)
+- **Amap**: Mapping amplitude (theory predicts Amap=2)
 
 With Amap=2, unsquared I_eff, and β=1/12:
-- Accumulator: X₀ ≈ 0.035 → H₀_local ≈ 73.8 km/s/Mpc
-- ODE: |Ψ| ≈ 0.019 → H₀_local ≈ 71.9 km/s/Mpc
+- ODE with dilution: X₀ ≈ 0.022 → H₀_local ≈ 71.1 km/s/Mpc
+- ODE no-decay: X₀ ≈ 0.027 → H₀_local ≈ 71.6 km/s/Mpc
+- Accumulator: X₀ ≈ 0.035 → H₀_local ≈ 72.6 km/s/Mpc
 
 **Physical interpretation**: H₀_phys is the true cosmic expansion rate that determines the CMB acoustic scale. H₀_local is what distance ladder measurements infer due to the super-Schwarzschild mapping effect on local calibrators.
 
@@ -166,7 +182,7 @@ Main modifications:
 - **I_eff switch**: Implements all five ieff_type variants (0–4)
 - **Interaction rate Q**: Computes Q = β · I_eff · Ω_Λ · ρ_tot · H
 - **SCR parabola**: S = 4.5 · Ω_de · Ω_m
-- **X_schw integration**: Both accumulator (dX/dlna) and ODE (dΨ/dlna) modes
+- **X_schw integration**: ODE with dilution (ode=1), ODE no-decay (ode=2), and accumulator (ode=0, legacy)
 - **Reservoir ρ_scr**: Optional energy storage when S > 1
 - **H₀_local derived parameter**: H₀_phys × exp(Amap × X₀)
 - **Background table columns**: X_schw, Q_interaction, I_eff, S_parabola
@@ -213,7 +229,7 @@ Reads all new parameters from .ini/.yaml files with defaults.
 | `super_schw_Amap` | 2 | H₀ mapping amplitude. 0=no mapping (Models A,D). 2=theory prediction (Models B,C). |
 | `super_schw_gamma` | 2.0 | SCR parabola exponent |
 | `super_schw_deltaS` | 0.03 | SCR transition width |
-| `super_schw_ode` | 0 | X formulation: 0=accumulator (default), 1=ODE with dilution |
+| `super_schw_ode` | 0 | X formulation: 0=accumulator (legacy), **1=ODE with dilution**, **2=ODE without dilution** |
 | `super_schw_kappa` | 0 | Far-future saturation (set to 0) |
 
 ### 3.3 Derived Output Parameters
@@ -268,9 +284,14 @@ extra_args:
   super_schw_deltaS: 0.03
 ```
 
-For ODE variant, add:
+For ODE with dilution, add:
 ```yaml
   super_schw_ode: 1
+```
+
+For ODE without dilution (no-decay), add:
+```yaml
+  super_schw_ode: 2
 ```
 
 ### 4.4 Model C (Damping + Reservoir + Mapping)
@@ -312,9 +333,11 @@ extra_args:
   super_schw_Amap: 2.0
   super_schw_gamma: 2.0
   super_schw_deltaS: 0.03
+  super_schw_ode: 2             # Match ODE mode to Model B comparison
+  super_schw_no_mapping: 0
 ```
 
-Note: acdm without interaction_beta produces S₈ identical to ΛCDM (mapping is background-only, does not affect perturbations), but still gives H₀_local boost.
+Note: acdm without interaction_beta produces S₈ identical to ΛCDM (mapping is background-only, does not affect perturbations), but still gives H₀_local boost. The `super_schw_no_mapping: 0` flag ensures DES Y3 is evaluated in the local frame for frame-control runs.
 
 ### 4.7 Model Summary Table
 
@@ -369,15 +392,20 @@ switch(pba->interaction_ieff_type) {
 }
 ```
 
-**X_schw ODE vs accumulator:**
+**X_schw ODE modes:**
 ```c
 if (pba->super_schw_ode == 1) {
-  // ODE: dPsi/dlna = -(1+q)*(Psi + Delta)
+  // ODE with dilution: dPsi/dlna = -(1+q)*(Psi + Delta)
   double Delta = (S > 1.0) ? (S - 1.0) : 0.0;
-  double q_total = /* full deceleration parameter */;
-  dX_dlna = -(1.0 + q_total) * (X_current + Delta);
+  double qp1 = 1.0 + q_decel;
+  dX_dlna = qp1 * Delta - qp1 * X_current;
+} else if (pba->super_schw_ode == 2) {
+  // ODE without dilution: dPsi/dlna = -(1+q)*Delta
+  double Delta = (S > 1.0) ? (S - 1.0) : 0.0;
+  double qp1 = 1.0 + q_decel;
+  dX_dlna = qp1 * Delta;
 } else {
-  // Accumulator: dX/dlna = max(S-1, 0)
+  // Accumulator (legacy): dX/dlna = max(S-1, 0)
   dX_dlna = (S > 1.0) ? (S - 1.0) : 0.0;
 }
 ```
@@ -467,14 +495,15 @@ PY
 
 Verifies that S₈ suppression is entirely from the interaction, not background modification. See `cpl_base.py` and `cpl_class_verify.py`.
 
-### 6.3 Model B Quick Check
+### 6.3 Model B Quick Check (all ODE modes)
 
 ```bash
 cd ~/class_holo_test && python3 << 'PY'
 import sys; sys.path.insert(0, "python")
 from classy import Class
+import numpy as np
 c_km_s = 299792.458
-params = {
+base = {
     "output": "mPk", "P_k_max_1/Mpc": 10.0,
     "h": 0.6678, "omega_b": 0.02237, "omega_cdm": 0.1200,
     "A_s": 2.1e-9, "n_s": 0.9649, "tau_reio": 0.0544,
@@ -485,18 +514,18 @@ params = {
     "super_schw_amp": 0.0, "super_schw_Amap": 2.0,
     "super_schw_deltaS": 0.03, "super_schw_gamma": 2.0,
 }
-c = Class(); c.set(params); c.compute()
-d = c.get_current_derived_parameters(["H0_local", "sigma8", "Omega_m"])
-H0_local = d["H0_local"]
-sigma8 = d["sigma8"]
-Omega_m = d["Omega_m"]
-S8 = sigma8 * (Omega_m/0.3)**0.5
-print(f"H0 (physical): {100*c.h():.2f} km/s/Mpc")
-print(f"H0_local:      {H0_local:.2f} km/s/Mpc")
-print(f"sigma8:        {sigma8:.4f}")
-print(f"Omega_m:       {Omega_m:.4f}")
-print(f"S8:            {S8:.4f}")
-c.struct_cleanup(); c.empty()
+print(f"{'Mode':20s} {'X0':>8} {'H0_phys':>8} {'H0_loc':>8} {'sigma8':>8} {'S8':>8}")
+for ode, label in [(0,"accumulator"), (1,"ODE dilution"), (2,"ODE no-decay")]:
+    p = dict(base); p["super_schw_ode"] = ode
+    c = Class(); c.set(p); c.compute()
+    bg = c.get_background()
+    X0 = bg['X_schw'][-1]
+    H0 = 100*c.h()
+    H0_loc = H0 * np.exp(2.0 * X0)
+    s8 = c.sigma8(); Om = c.Omega_m()
+    S8 = s8 * np.sqrt(Om/0.3)
+    print(f"{label:20s} {X0:8.5f} {H0:8.3f} {H0_loc:8.3f} {s8:8.4f} {S8:8.4f}")
+    c.struct_cleanup(); c.empty()
 PY
 ```
 
@@ -536,7 +565,7 @@ class SH0ES_H0local(Likelihood):
         return -0.5 * ((H0_local - self.h0_shoes) / self.h0_shoes_err) ** 2
 ```
 
-### 7.3 Cobaya YAML Template (Model B, unsquared)
+### 7.3 Cobaya YAML Template (Model B, unsquared, ODE)
 
 ```yaml
 theory:
@@ -550,6 +579,7 @@ theory:
       super_schw_Amap: 2.0
       super_schw_gamma: 2.0
       super_schw_deltaS: 0.03
+      super_schw_ode: 1          # 1=ODE with dilution, 2=ODE no-decay
     output_parameters:
       - sigma8
       - Omega_m
@@ -570,7 +600,7 @@ Standard 6-parameter ΛCDM basis plus nuisance:
 
 Optional additional sampled parameters:
 - `interaction_beta`: Sample [0, 0.3] for β-free runs
-- `super_schw_Amap`: Sample [0, 5] for Amap-free runs
+- `super_schw_Amap`: Sample [0, 10] for Amap-free runs
 - `super_schw_amp`: Sample [0, 5] for reservoir amplitude-free runs
 - `f_clust`: Sample [0, 1] for clustering fraction test
 
@@ -640,8 +670,9 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 |-------|---------|----------|------|------|----------|
 | ΛCDM | 67.2 | 67.2 | 0.808 | 0.828 | 0.828 |
 | Model A (unsq) | 67.2 | 67.2 | 0.752 | 0.801 | 0.801 |
-| Model B (unsq, accum) | 67.2 | ~73.8 | 0.752 | 0.801 | ~0.716 |
-| Model B (unsq, ODE) | 67.2 | ~71.9 | 0.752 | 0.801 | ~0.739 |
+| Model B (unsq, ODE dilution) | 67.2 | ~71.1 | 0.752 | 0.801 | ~0.745 |
+| Model B (unsq, ODE no-decay) | 67.2 | ~71.6 | 0.752 | 0.801 | ~0.739 |
+| Model B (unsq, accum) | 67.2 | ~72.6 | 0.752 | 0.801 | ~0.720 |
 
 ### 9.2 Observational Targets
 
@@ -654,16 +685,16 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 
 | Run | Δχ² vs ΛCDM | H₀_local | S₈ | SH0ES χ² |
 |-----|-------------|----------|------|----------|
-| Model B A2 (accum) | −46 | 73.8 | 0.778 | 0.5 |
-| Model B A2 (ODE) | −45 | 71.9 | 0.783 | 1.3 |
-| Model A | −23 | 68.9 | 0.774 | 13.5 |
-| Model B A1 | −44 | 71.5 | 0.780 | 2.1 |
-| acdm A2 | −63 | 72.7 | 0.778 | 0.1 |
+| Model B A2 (ODE dilution) | −47 | 72.0 | 0.779 | 1.0 |
+| Model B A2 (ODE no-decay) | −49 | 73.0 | 0.780 | 0.0 |
+| Model B A-free (ODE dilution) | −47 | 73.1 | 0.779 | 0.0 |
+| Model A | −31 | 68.9 | 0.777 | 15.0 |
+| ΛCDM A2 (ODE, no interaction) | — | 72.3 | 0.800 | 0.3 |
 
 ### 9.4 Key Physical Results
 
 1. **CPL surrogate**: Background indistinguishable from ΛCDM (|δH/H| < 0.01%). Entire S₈ shift is from perturbation interaction.
 2. **f_clust**: Data independently finds f_clust ≈ 0.03 (consistent with zero). f_clust = 1 catastrophically worsens fit by +146 χ².
 3. **I_eff exponent**: Squared is the minimum working exponent (fourth power too weak). Unsquared (linear) is preferred — stronger S₈ suppression, better fits, simpler theory.
-4. **ODE vs accumulator**: Nearly identical Δχ² (−45 vs −46). ODE is theoretically cleaner; accumulator gives better H₀. Both prefer Amap = 2.
+4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). MCMC will discriminate.
 5. **β stability**: At unsquared coupling, β = 1/12 is already optimal. β-free runs show minimal movement from the theory prediction.
