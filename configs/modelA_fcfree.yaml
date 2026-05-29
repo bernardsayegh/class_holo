@@ -20,10 +20,10 @@ likelihood:
   bao.desi_dr2: null
   sn.pantheonplus: null
   desy3_likelihood_fast.DESY3:
-    python_path: /Users/Bernard_1/holographic_mcmc
-    data_path: /Users/Bernard_1/holographic_mcmc/des_y3_data/likelihood/des-y3
+    python_path: .
+    data_path: ./des_y3_data/likelihood/des-y3
   shoes_h0local.SH0ES_H0local:
-    python_path: /Users/Bernard_1/holographic_mcmc
+    python_path: .
     H0_shoes: 73.04
     H0_shoes_err: 1.04
 params:
@@ -95,4 +95,4 @@ sampler:
     learn_proposal: true
     output_every: 60s
 output: chains_test/modelA_fcfree_v3_full
-packages_path: /Users/Bernard_1/holographic_mcmc/packages
+packages_path: ./packages

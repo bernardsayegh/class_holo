@@ -21,8 +21,8 @@ likelihood:
   bao.desi_dr2: null
   sn.pantheonplus: null
   desy3_likelihood_fast.DESY3:
-    python_path: /Users/Bernard_1/holographic_mcmc
-    data_path: /Users/Bernard_1/holographic_mcmc/des_y3_data/likelihood/des-y3
+    python_path: .
+    data_path: ./des_y3_data/likelihood/des-y3
 params:
   omega_b:
     prior: [0.019, 0.025]
@@ -87,4 +87,4 @@ sampler:
     learn_proposal: true
     output_every: 60s
 output: chains_test/modelB_A2_noprior_v3_full
-packages_path: /Users/Bernard_1/holographic_mcmc/packages
+packages_path: ./packages
