@@ -11,7 +11,7 @@ theory:
       super_schw_Amap: 0.0
       super_schw_deltaS: 0.01
       super_schw_gamma: 2.0
-      super_schw_ode: 2
+      super_schw_ode: 0
 likelihood:
   planck_2018_highl_plik.TTTEEE: null
   planck_2018_lowl.TT: null
@@ -24,8 +24,8 @@ likelihood:
     data_path: ./des_y3_data/likelihood/des-y3
   shoes_h0local.SH0ES_H0local:
     python_path: .
-    H0_shoes: 73.04
-    H0_shoes_err: 1.04
+    H0_shoes: 73.49
+    H0_shoes_err: 0.93
 params:
   omega_b:
     prior: [0.019, 0.025]
@@ -94,5 +94,5 @@ sampler:
     max_tries: 10000
     learn_proposal: true
     output_every: 60s
-output: chains_test/modelA_fcfree_v3_full
+output: chains_test/modelA_fcfree_v4_acc
 packages_path: ./packages

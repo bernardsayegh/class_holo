@@ -12,7 +12,7 @@ theory:
       super_schw_Amap: 2.0
       super_schw_deltaS: 0.01
       super_schw_gamma: 2.0
-      super_schw_ode: 2
+      super_schw_ode: 0
 likelihood:
   planck_2018_highl_plik.TTTEEE: null
   planck_2018_lowl.TT: null
@@ -86,5 +86,5 @@ sampler:
     max_tries: 10000
     learn_proposal: true
     output_every: 60s
-output: chains_test/modelB_A2_noprior_v3_full
+output: chains_test/modelB_A2_noprior_v4_acc
 packages_path: ./packages
