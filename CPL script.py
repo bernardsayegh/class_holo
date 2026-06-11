@@ -1,6 +1,3 @@
-cd /workspaces/class_holo
-
-cat > cpl_base.py << 'PY'
 #!/usr/bin/env python3
 import sys
 sys.path.insert(0, "python")
@@ -9,33 +6,25 @@ from scipy.optimize import minimize, brentq
 from scipy.integrate import quad
 import numpy as np
 
-# -----------------------------
-# Targets / controls (consistent with cosmo_stats_thetas_matched.py)
-# -----------------------------
 THETA_S_TARGET = 1.040423
 H_BRACKET = (0.55, 0.80)
 BETA_MODEL_A = 1.0/12.0
 F_CLUST = 0.0
-
 c_km_s = 299792.458
 OMEGA_R = 8.85e-5
 Z_FIT = np.linspace(0.0, 2.5, 100)
 
-# Explicit late/early-universe defaults for reproducibility
 BASE_PARAMS = {
     "output": "mPk",
     "P_k_max_1/Mpc": 10.0,
-
     "omega_b": 0.02242,
     "omega_cdm": 0.11933,
     "n_s": 0.9665,
     "A_s": 2.1e-9,
     "tau_reio": 0.054,
-
     "N_ur": 2.0328,
     "N_ncdm": 1,
     "m_ncdm": 0.06,
-
     "Omega_k": 0.0,
 }
 
@@ -45,6 +34,7 @@ def get_class_instance(h, beta):
     if beta > 0:
         params["interaction_beta"] = float(beta)
         params["f_clust"] = float(F_CLUST)
+        params["interaction_ieff_type"] = 4
     c = Class()
     c.set(params)
     c.compute()
@@ -111,44 +101,36 @@ def compute_residuals(H_holo, D_M_holo, H0, Om, w0, wa, z_arr):
     return dH, dD
 
 print("=" * 70)
-print("CPL SURROGATE FOR HOLOGRAPHIC MODEL (β=1/12)")
+print("CPL SURROGATE FOR HOLOGRAPHIC MODEL (beta=1/12)")
 print("=" * 70)
 
 h = solve_h_for_theta(BETA_MODEL_A)
 cosmo = get_class_instance(h, BETA_MODEL_A)
-
 H0 = cosmo.Hubble(0) * c_km_s
 Om = cosmo.Omega_m()
 s8 = cosmo.sigma8()
 S8 = s8 * np.sqrt(Om/0.3)
-
 H_holo, D_M_holo = extract_Hz_DM(cosmo, Z_FIT)
-
 x = fit_CPL(H_holo, D_M_holo, Z_FIT, H0)
 H0_cpl, Om_cpl, w0, wa = x
 dH, dD = compute_residuals(H_holo, D_M_holo, H0_cpl, Om_cpl, w0, wa, Z_FIT)
 
-print(f"\nHolographic Model (β=1/12):")
+print(f"\nHolographic Model (beta=1/12):")
 print(f"  h       = {h:.5f}")
 print(f"  H0      = {H0:.3f} km/s/Mpc")
-print(f"  Ω_m     = {Om:.3f}")
-print(f"  σ8      = {s8:.3f}")
+print(f"  Om      = {Om:.3f}")
+print(f"  sigma8  = {s8:.3f}")
 print(f"  S8      = {S8:.3f}")
-
 print(f"\nCPL Surrogate (best-fit):")
-print(f"  Ω_m,eff = {Om_cpl:.3f}")
+print(f"  Om,eff  = {Om_cpl:.3f}")
 print(f"  w0      = {w0:.3f}")
 print(f"  wa      = {wa:.3f}")
-
 print(f"\nFit Quality:")
-print(f"  max|δH/H|   = {dH:.4f}%")
-print(f"  max|δD_M/D_M| = {dD:.4f}%")
-
-print(f"\nDiscrepancy: Ω_m,true = {Om:.3f}, Ω_m,CPL = {Om_cpl:.3f} ({100*(Om-Om_cpl)/Om:+.1f}%)")
+print(f"  max|dH/H|     = {dH:.4f}%")
+print(f"  max|dDM/DM|   = {dD:.4f}%")
+print(f"\nDiscrepancy: Om,true = {Om:.3f}, Om,CPL = {Om_cpl:.3f} ({100*(Om-Om_cpl)/Om:+.1f}%)")
 print("=" * 70)
 
 cosmo.struct_cleanup()
 cosmo.empty()
-PY
-
 python3 cpl_base.py
