@@ -698,3 +698,28 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 3. **I_eff exponent**: Squared is the minimum working exponent (fourth power too weak). Unsquared (linear) is preferred — stronger S₈ suppression, better fits, simpler theory.
 4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). MCMC will discriminate.
 5. **β stability**: At unsquared coupling, β = 1/12 is already optimal. β-free runs show minimal movement from the theory prediction.
+
+## v5 Publication Grid (paper provenance)
+Paper results come from the v5 generation: fixed Cobaya routing +
+Planck-standard neutrinos (N_ncdm: 1, m_ncdm: 0.06, N_ur: 2.0328 in
+every config's extra_args). v4 massless-nu chains survive as a
+robustness tier (Delta chi2 ~ +0.3-0.4).
+
+### Routing rule (do not skip)
+Any SAMPLED parameter must appear BOTH in theory.classy.input_params
+AND in the top-level params block with a prior, and must be REMOVED
+from extra_args. Left in extra_args it is silently pinned while the
+sampler wanders a disconnected copy: converged, healthy-looking, and
+wrong. This forced one full grid relaunch; check it first whenever a
+floated posterior looks prior-like.
+
+### Run protocol
+Accumulator mode (ode = 0); OMP_NUM_THREADS=1; mpirun -n 4 cobaya-run;
+gate R-1 < 0.01 (all rows except Model C amp+Afree, 0.017, disclosed).
+SH0ES anchor: Riess 2025, 73.49 +/- 0.93 (ApJL 992 L34).
+
+### Headline
+configs/lcdm: H0 = 69.12 +/- 0.25, S8 = 0.787 (chi2 = 4647.0).
+configs/modelB_A2: Delta chi2 = -34.2 at zero extra parameters,
+H0_local = 73.58 +/- 0.25 (0.09 sigma from SH0ES), S8 = 0.775 +/- 0.006;
+gain = SH0ES -22.1 + CMB -6.3 + DES -3.7, BAO/SN unchanged.

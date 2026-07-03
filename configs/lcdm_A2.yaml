@@ -2,6 +2,9 @@
 theory:
   classy:
     extra_args:
+      N_ncdm: 1
+      m_ncdm: 0.06
+      N_ur: 2.0328
       non_linear: hmcode
       YHe: 0.2454
       interaction_beta: 0.0
