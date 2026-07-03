@@ -27,3 +27,7 @@ chains_test/
 packages/
 *.covmat
 diag_*.txt
+chains_test/
+packages/
+*.covmat
+diag_*.txt
