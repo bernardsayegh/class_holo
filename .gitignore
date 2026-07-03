@@ -23,3 +23,7 @@ venv/
 *.backup*
 *.bak
 class
+chains_test/
+packages/
+*.covmat
+diag_*.txt
