@@ -27,8 +27,8 @@ likelihood:
     data_path: ./des_y3_data/likelihood/des-y3
   shoes_h0local.SH0ES_H0local:
     python_path: .
-    H0_shoes: 73.04
-    H0_shoes_err: 1.04
+    H0_shoes: 73.49
+    H0_shoes_err: 0.93
 params:
   omega_b:
     prior: [0.019, 0.025]
@@ -98,5 +98,5 @@ sampler:
     learn_proposal: true
     oversample_power: 0.4
     output_every: 60s
-output: chains_test/modelD_v3_full
+output: chains_test/modelD_v5
 packages_path: ./packages

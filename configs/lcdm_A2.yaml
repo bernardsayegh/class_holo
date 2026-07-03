@@ -93,5 +93,5 @@ sampler:
     max_tries: 10000
     learn_proposal: true
     output_every: 60s
-output: chains_test/lcdm_A2_nd_v4_acc
+output: chains_test/lcdm_A2_nd_v5
 packages_path: ./packages

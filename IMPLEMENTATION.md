@@ -706,9 +706,12 @@ every config's extra_args). v4 massless-nu chains survive as a
 robustness tier (Delta chi2 ~ +0.3-0.4).
 
 ### Routing rule (do not skip)
-Any SAMPLED parameter must appear BOTH in theory.classy.input_params
-AND in the top-level params block with a prior, and must be REMOVED
-from extra_args. Left in extra_args it is silently pinned while the
+Any SAMPLED parameter must live in the top-level params block with a
+prior and must NOT appear in extra_args -- a value there silently pins
+the theory while the sampler wanders a disconnected copy. If an
+explicit input_params list is declared, every sampled theory parameter
+must also be listed in it; these configs use Cobaya's automatic
+assignment and declare none. Left in extra_args it is silently pinned while the
 sampler wanders a disconnected copy: converged, healthy-looking, and
 wrong. This forced one full grid relaunch; check it first whenever a
 floated posterior looks prior-like.
