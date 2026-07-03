@@ -111,7 +111,7 @@ struct background
   double super_schw_amp;           /**< Amplitude for super-Schwarzschild correction (default: 1.0) */
   double super_schw_deltaS;        /**< Smoothness of activation g(S), e.g. 0.03 */
   double super_schw_gamma;         /**< Decay rate Gamma/H for rho_scr reservoir */
-  int super_schw_ode;              /**< 0: accumulator dX/dlna=Delta (default), 1: ODE dPsi/dlna=-(1+q)(Psi+Delta) */
+  int super_schw_ode;              /**< 0: accumulator dX/dlna=Delta, 1: ODE with dilution dPsi/dlna=-(1+q)(Psi+Delta), 2: no-decay ODE dPsi/dlna=-(1+q)Delta */
   double super_schw_kappa;        /**< future-only S<1 boost strength (0=off) */
   short super_schw_no_mapping;   /**< if true, H0_local = H0_phys (disable exp(X0) mapping) */
   double super_schw_Amap;         /**< mapping amplitude: H0_local = H0_phys * exp(Amap * X0) */

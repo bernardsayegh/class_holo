@@ -2,6 +2,9 @@
 theory:
   classy:
     extra_args:
+      N_ncdm: 1
+      m_ncdm: 0.06
+      N_ur: 2.0328
       non_linear: hmcode
       YHe: 0.2454
       interaction_beta: 0.0
@@ -12,7 +15,7 @@ theory:
       super_schw_Amap: 2.0
       super_schw_deltaS: 0.01
       super_schw_gamma: 2.0
-      super_schw_ode: 2
+      super_schw_ode: 0
 likelihood:
   planck_2018_highl_plik.TTTEEE: null
   planck_2018_lowl.TT: null
@@ -25,8 +28,8 @@ likelihood:
     data_path: ./des_y3_data/likelihood/des-y3
   shoes_h0local.SH0ES_H0local:
     python_path: .
-    H0_shoes: 73.04
-    H0_shoes_err: 1.04
+    H0_shoes: 73.49
+    H0_shoes_err: 0.93
 params:
   omega_b:
     prior: [0.019, 0.025]
@@ -90,5 +93,5 @@ sampler:
     max_tries: 10000
     learn_proposal: true
     output_every: 60s
-output: chains_test/lcdm_A2_nd_v3_full
+output: chains_test/lcdm_A2_nd_v5
 packages_path: ./packages

@@ -264,3 +264,12 @@ If you use this code, please cite:
 ## License
 
 The CLASS modifications are released under the same licence as [CLASS](https://github.com/lesgourg/class_public) (GNU GPLv3). Custom likelihoods and scripts are MIT-licensed.
+
+## Reproducing the paper (quickstart)
+1. make -j  (holographic mods in background.c, perturbations.c, input.c)
+2. cobaya-install configs/modelB_A2.yaml --packages-path ./packages
+3. export OMP_NUM_THREADS=1 && mpirun -n 4 cobaya-run configs/modelB_A2.yaml
+   Expected: H0_local = 73.58 +/- 0.25, S8 = 0.775 +/- 0.006,
+   Delta chi2 = -34.2 vs configs/lcdm.yaml.
+4. plotting/ regenerates every paper figure from converged chains.
+See IMPLEMENTATION.md for the routing rule and full protocol.
