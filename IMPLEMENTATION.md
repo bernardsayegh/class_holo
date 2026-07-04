@@ -551,8 +551,8 @@ from cobaya.likelihood import Likelihood
 
 class SH0ES_H0local(Likelihood):
     """SH0ES constraint on H0_local from holographic model."""
-    h0_shoes: float = 73.04
-    h0_shoes_err: float = 1.04
+    h0_shoes: float = 73.49
+    h0_shoes_err: float = 0.93
 
     def initialize(self):
         self.log.info(f"SH0ES H0_local: {self.h0_shoes} +/- {self.h0_shoes_err}")
@@ -587,8 +587,8 @@ theory:
 
 likelihood:
   shoes_h0local.SH0ES_H0local:
-    h0_shoes: 73.04
-    h0_shoes_err: 1.04
+    h0_shoes: 73.49
+    h0_shoes_err: 0.93
   # ... plus Planck, BAO, Pantheon+, DES Y3
 ```
 
@@ -664,7 +664,9 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 
 ## 9. Appendix: Diagnostic Results
 
-### 9.1 θ_s-Matched Fixed-Parameter Predictions
+### 9.1 θ_s-Matched Fixed-Parameter Predictions (historical diagnostic)
+
+*Massless-ν development-era grid, retained to document the ODE-mode selection (dilution vs no-decay vs accumulator). Current θ_s-matched values are in the README; publication MCMC results are in the v5 section below.*
 
 | Model | H₀_phys | H₀_local | σ₈ | S₈ | S₈_local |
 |-------|---------|----------|------|------|----------|
@@ -676,12 +678,14 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 
 ### 9.2 Observational Targets
 
-- **SH0ES**: H₀ = 73.04 ± 1.04 km/s/Mpc
+- **SH0ES (R25)**: H₀ = 73.49 ± 0.93 km/s/Mpc (Riess et al. 2025, ApJL 992 L34)
 - **Planck CMB**: H₀ = 67.4 ± 0.5 km/s/Mpc
 - **DES Y3**: S₈ = 0.776 ± 0.017
 - **Planck S₈**: 0.834 ± 0.016
 
-### 9.3 MCMC Performance Summary (unsquared, ieff_type=4)
+### 9.3 MCMC Performance Summary (historical: v3 generation, R22 anchor)
+
+*Development-era grid (massless ν, 73.04 anchor), retained for provenance. The publication results are the v5 grid: see the v5 section below and the paper.*
 
 | Run | Δχ² vs ΛCDM | H₀_local | S₈ | SH0ES χ² |
 |-----|-------------|----------|------|----------|
@@ -696,7 +700,7 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 1. **CPL surrogate**: Background indistinguishable from ΛCDM (|δH/H| < 0.01%). Entire S₈ shift is from perturbation interaction.
 2. **f_clust**: Data independently finds f_clust ≈ 0.03 (consistent with zero). f_clust = 1 catastrophically worsens fit by +146 χ².
 3. **I_eff exponent**: Squared is the minimum working exponent (fourth power too weak). Unsquared (linear) is preferred — stronger S₈ suppression, better fits, simpler theory.
-4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). MCMC will discriminate.
+4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). The v5 grid discriminated: accumulator mode is the publication configuration (Δχ² = −34.2, H₀_local = 73.58 ± 0.25, 0.09σ from SH0ES R25).
 5. **β stability**: At unsquared coupling, β = 1/12 is already optimal. β-free runs show minimal movement from the theory prediction.
 
 ## v5 Publication Grid (paper provenance)
