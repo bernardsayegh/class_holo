@@ -27,7 +27,7 @@ Model B (β = 1/12, A_map = 2) simultaneously resolves the H₀ tension (H₀,lo
 ```
 class_holo/
 ├── README.md
-├── IMPLEMENTATION.md             # Physics, code structure, v5 run protocol, routing rule
+├── IMPLEMENTATION.md             # Physics, code structure, run protocol, routing rule
 ├── LICENSE_AND_CITATION.md
 ├── configs/                      # 17 Cobaya YAML configuration files (publication grid)
 │   ├── lcdm.yaml

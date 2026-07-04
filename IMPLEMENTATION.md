@@ -666,7 +666,7 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 
 ### 9.1 θ_s-Matched Fixed-Parameter Predictions (historical diagnostic)
 
-*Massless-ν development-era grid, retained to document the ODE-mode selection (dilution vs no-decay vs accumulator). Current θ_s-matched values are in the README; publication MCMC results are in the v5 section below.*
+*Massless-ν development-era grid, retained to document the ODE-mode selection (dilution vs no-decay vs accumulator). Current θ_s-matched values are in the README; publication MCMC results are in the Publication Grid section below.*
 
 | Model | H₀_phys | H₀_local | σ₈ | S₈ | S₈_local |
 |-------|---------|----------|------|------|----------|
@@ -706,7 +706,7 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 ## Publication Grid (paper provenance)
 Paper results come from the publication grid: fixed Cobaya routing +
 Planck-standard neutrinos (N_ncdm: 1, m_ncdm: 0.06, N_ur: 2.0328 in
-every config's extra_args). v4 massless-nu chains survive as a
+every config's extra_args). The earlier massless-neutrino chains survive as a
 robustness tier (Delta chi2 ~ +0.3-0.4).
 
 ### Routing rule (do not skip)
