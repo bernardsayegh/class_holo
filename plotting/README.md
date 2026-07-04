@@ -19,6 +19,8 @@ caption verification. Chain-dependent scripts resolve roots from
 | desi_bao_dr2.py | fig:desi_bao | CLASS build |
 | contours_H0_S8.py | (supplementary) | LCDM, A, B(A2) chains |
 | holographic_data_bracket_expanded.py | (supplementary) | none |
+| sweep_rate_omega.tex | sweep_rate | TikZ source (compiles in-document) |
+| evolution_Sz.py | Sz | CLASS build |
 
 sweep_rate_omega.tex (TikZ source, fig:sweep_rate) and
 evolution_Sz.py (fig:Sz) complete the figure set. CLASS-based scripts must run from
