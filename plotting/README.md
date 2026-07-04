@@ -1,9 +1,9 @@
-# plotting/ -- paper figure scripts (v5 grid)
+# plotting/ -- paper figure scripts
 
 Script names match the \includegraphics filenames in the paper: each
 script X.py produces X.pdf (+ .png) and prints a summary block for
 caption verification. Chain-dependent scripts resolve roots from
-~/class_holo_test/chains_test automatically (v5 naming, glob fallback).
+~/class_holo_test/chains_test automatically (chains carry a `_v5` suffix; a glob fallback matches variants).
 
 | script | paper figure | needs |
 |---|---|---|

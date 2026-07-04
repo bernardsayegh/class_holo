@@ -60,7 +60,7 @@ where Ω_m,2f = ρ_m / (ρ_m + ρ_de), excluding radiation and neutrinos.
 | 1 (lag²) | 0.6309 | 0.7116 | 0.3817 | 70.97 |
 | 2 (lag) | 0.6873 | 0.7518 | 0.3589 | 69.69 |
 
-The unsquared (ieff_type=4) is the preferred formulation: it is the simplest (linear surface gravity ratio), produces stronger S₈ suppression than squared without over-suppressing like Lagrangian variants, and achieved the best fits in the development grid (Δχ² ≈ −48, v3 generation). It is the published formulation, used in every v5 configuration; the v5 publication headline is Δχ² = −34.2 with the R25 anchor and Planck-standard neutrinos.
+The unsquared (ieff_type=4) is the preferred formulation: it is the simplest (linear surface gravity ratio), produces stronger S₈ suppression than squared without over-suppressing like Lagrangian variants, and achieved the best fits in the development grid . It is the published formulation, used in every publication configuration; the publication headline is Δχ² = −34.2 with the R25 anchor and Planck-standard neutrinos.
 
 ### 1.3 Two-Fluid Treatment
 
@@ -157,8 +157,8 @@ Controls how the injected dark energy perturbation is distributed:
 - **f_clust = 1**: Injection clusters with matter — kills S₈ suppression
 
 The holographic principle predicts f_clust = 0 from first principles. MCMC validation:
-- f_clust = 1 fixed: strongly disfavoured (development grid: +146 vs ΛCDM; v5 grid: +5.8 vs ΛCDM, ~12 worse than Model A)
-- f_clust free: consistent with zero (development grid: 0.03 ± 0.01; v5 grid: 0.20 ± 0.16, 1.3σ from zero)
+- f_clust = 1 fixed: strongly disfavoured (development grid: +146 vs ΛCDM; publication grid: +5.8 vs ΛCDM, ~12 worse than Model A)
+- f_clust free: consistent with zero (development grid: 0.03 ± 0.01; publication grid: 0.20 ± 0.16, 1.3σ from zero)
 
 ### 1.8 CPL Surrogate Analysis
 
@@ -683,9 +683,9 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 - **DES Y3**: S₈ = 0.776 ± 0.017
 - **Planck S₈**: 0.834 ± 0.016
 
-### 9.3 MCMC Performance Summary (historical: v3 generation, R22 anchor)
+### 9.3 MCMC Performance Summary (historical: development grid, R22 anchor)
 
-*Development-era grid (massless ν, 73.04 anchor), retained for provenance. The publication results are the v5 grid: see the v5 section below and the paper.*
+*Development-era grid (massless ν, 73.04 anchor), retained for provenance. The publication results are in the Publication Grid section below and the paper.*
 
 | Run | Δχ² vs ΛCDM | H₀_local | S₈ | SH0ES χ² |
 |-----|-------------|----------|------|----------|
@@ -698,13 +698,13 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 ### 9.4 Key Physical Results
 
 1. **CPL surrogate**: Background indistinguishable from ΛCDM (|δH/H| < 0.01%). Entire S₈ shift is from perturbation interaction.
-2. **f_clust**: Data independently finds f_clust consistent with zero (v5 grid: 0.20 ± 0.16). f_clust = 1 is strongly disfavoured in every generation.
+2. **f_clust**: Data independently finds f_clust consistent with zero (publication grid: 0.20 ± 0.16). f_clust = 1 is strongly disfavoured in every generation.
 3. **I_eff exponent**: Squared is the minimum working exponent (fourth power too weak). Unsquared (linear) is preferred — stronger S₈ suppression, better fits, simpler theory.
-4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). The v5 grid discriminated: accumulator mode is the publication configuration (Δχ² = −34.2, H₀_local = 73.58 ± 0.25, 0.09σ from SH0ES R25).
+4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). The publication grid discriminated: accumulator mode is the publication configuration (Δχ² = −34.2, H₀_local = 73.58 ± 0.25, 0.09σ from SH0ES R25).
 5. **β stability**: At unsquared coupling, β = 1/12 is already optimal. β-free runs show minimal movement from the theory prediction.
 
-## v5 Publication Grid (paper provenance)
-Paper results come from the v5 generation: fixed Cobaya routing +
+## Publication Grid (paper provenance)
+Paper results come from the publication grid: fixed Cobaya routing +
 Planck-standard neutrinos (N_ncdm: 1, m_ncdm: 0.06, N_ur: 2.0328 in
 every config's extra_args). v4 massless-nu chains survive as a
 robustness tier (Delta chi2 ~ +0.3-0.4).

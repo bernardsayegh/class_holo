@@ -29,7 +29,7 @@ class_holo/
 ├── README.md
 ├── IMPLEMENTATION.md             # Physics, code structure, v5 run protocol, routing rule
 ├── LICENSE_AND_CITATION.md
-├── configs/                      # 17 Cobaya YAML configuration files (v5 grid)
+├── configs/                      # 17 Cobaya YAML configuration files (publication grid)
 │   ├── lcdm.yaml
 │   ├── modelB_A2.yaml
 │   └── ...
@@ -150,7 +150,7 @@ The DES-Y3 2pt data file (`2pt_NG_final_2ptunblind_02_24_21_wnz_covupdate.v2.fit
 
 ## Reproducing the paper
 
-Each YAML file is self-contained and carries the v5 publication conventions: Planck-standard neutrinos (N_ncdm = 1, m_ncdm = 0.06 eV, N_ur = 2.0328) and the SH0ES R25 anchor (73.49 ± 0.93). To reproduce any chain:
+Each YAML file is self-contained and carries the publication conventions: Planck-standard neutrinos (N_ncdm = 1, m_ncdm = 0.06 eV, N_ur = 2.0328) and the SH0ES R25 anchor (73.49 ± 0.93). To reproduce any chain:
 
 ```
 source venv/bin/activate
@@ -213,7 +213,7 @@ Gaussian likelihood on H₀,loc (the locally-measured Hubble constant output by 
 
 ## Plotting scripts
 
-Paper figure scripts live in `plotting/`; each script name matches its `\includegraphics` filename in the paper (script `X.py` produces `X.pdf`). Chain-based scripts resolve converged v5 chains from `~/class_holo_test/chains_test` automatically. Run from the repository root:
+Paper figure scripts live in `plotting/`; each script name matches its `\includegraphics` filename in the paper (script `X.py` produces `X.pdf`). Chain-based scripts resolve the converged publication chains (`*_v5*` filenames) from `~/class_holo_test/chains_test` automatically. Run from the repository root:
 
 ```
 PYTHONPATH=python python3 plotting/<script>.py
