@@ -157,8 +157,8 @@ Controls how the injected dark energy perturbation is distributed:
 - **f_clust = 1**: Injection clusters with matter — kills S₈ suppression
 
 The holographic principle predicts f_clust = 0 from first principles. MCMC validation:
-- f_clust = 1 fixed: Δχ² = +146 vs ΛCDM (catastrophic)
-- f_clust free: converges to f_clust ≈ 0.03 ± 0.01 (consistent with zero)
+- f_clust = 1 fixed: strongly disfavoured (development grid: +146 vs ΛCDM; v5 grid: +5.8 vs ΛCDM, ~12 worse than Model A)
+- f_clust free: consistent with zero (development grid: 0.03 ± 0.01; v5 grid: 0.20 ± 0.16, 1.3σ from zero)
 
 ### 1.8 CPL Surrogate Analysis
 
@@ -698,7 +698,7 @@ Don't skip `make clean` — the `classy` binary and `python/classy.cpython-*.so`
 ### 9.4 Key Physical Results
 
 1. **CPL surrogate**: Background indistinguishable from ΛCDM (|δH/H| < 0.01%). Entire S₈ shift is from perturbation interaction.
-2. **f_clust**: Data independently finds f_clust ≈ 0.03 (consistent with zero). f_clust = 1 catastrophically worsens fit by +146 χ².
+2. **f_clust**: Data independently finds f_clust consistent with zero (v5 grid: 0.20 ± 0.16). f_clust = 1 is strongly disfavoured in every generation.
 3. **I_eff exponent**: Squared is the minimum working exponent (fourth power too weak). Unsquared (linear) is preferred — stronger S₈ suppression, better fits, simpler theory.
 4. **ODE dilution vs no-decay**: The three X₀ modes (accumulator, no-decay, full ODE) give X₀ = 0.035, 0.027, 0.022 respectively. σ₈ and S₈ are identical — only the H₀ mapping differs. The no-decay ODE has a clean physical argument: source weighted by horizon growth rate, but accumulated entropy doesn't dilute because thermodynamic production is irreversible. The full ODE is the most conservative (standard perturbation theory with no additional assumptions). The v5 grid discriminated: accumulator mode is the publication configuration (Δχ² = −34.2, H₀_local = 73.58 ± 0.25, 0.09σ from SH0ES R25).
 5. **β stability**: At unsquared coupling, β = 1/12 is already optimal. β-free runs show minimal movement from the theory prediction.
