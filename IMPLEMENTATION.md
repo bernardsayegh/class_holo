@@ -60,7 +60,7 @@ where Ω_m,2f = ρ_m / (ρ_m + ρ_de), excluding radiation and neutrinos.
 | 1 (lag²) | 0.6309 | 0.7116 | 0.3817 | 70.97 |
 | 2 (lag) | 0.6873 | 0.7518 | 0.3589 | 69.69 |
 
-The unsquared (ieff_type=4) is the preferred formulation: it is the simplest (linear surface gravity ratio), produces stronger S₈ suppression than squared without over-suppressing like Lagrangian variants, and achieves the best MCMC fits (Δχ² ≈ −48 vs ΛCDM).
+The unsquared (ieff_type=4) is the preferred formulation: it is the simplest (linear surface gravity ratio), produces stronger S₈ suppression than squared without over-suppressing like Lagrangian variants, and achieved the best fits in the development grid (Δχ² ≈ −48, v3 generation). It is the published formulation, used in every v5 configuration; the v5 publication headline is Δχ² = −34.2 with the R25 anchor and Planck-standard neutrinos.
 
 ### 1.3 Two-Fluid Treatment
 
