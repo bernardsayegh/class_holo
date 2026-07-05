@@ -1,9 +1,9 @@
-# plotting/ -- paper figure scripts (v5 grid)
+# plotting/ -- paper figure scripts
 
 Script names match the \includegraphics filenames in the paper: each
 script X.py produces X.pdf (+ .png) and prints a summary block for
 caption verification. Chain-dependent scripts resolve roots from
-~/class_holo_test/chains_test automatically (v5 naming, glob fallback).
+~/class_holo_test/chains_test automatically (chains carry a `_v5` suffix; a glob fallback matches variants).
 
 | script | paper figure | needs |
 |---|---|---|
@@ -19,9 +19,11 @@ caption verification. Chain-dependent scripts resolve roots from
 | desi_bao_dr2.py | fig:desi_bao | CLASS build |
 | contours_H0_S8.py | (supplementary) | LCDM, A, B(A2) chains |
 | holographic_data_bracket_expanded.py | (supplementary) | none |
+| sweep_rate_omega.tex | sweep_rate | TikZ source (compiles in-document) |
+| evolution_Sz.py | Sz | CLASS build |
 
-Not yet included: sweep_rate_omega.py and evolution_Sz.py (analytic
-figures fig:sweep_rate and fig:Sz). CLASS-based scripts must run from
+sweep_rate_omega.tex (TikZ source, fig:sweep_rate) and
+evolution_Sz.py (fig:Sz) complete the figure set. CLASS-based scripts must run from
 the repo root (they add ./python to sys.path). Reference bands: SH0ES
 R25 (73.49 +/- 0.93), DES-Y3, growth fsigma8 S8 = 0.747 +/- 0.029
 (Nguyen+ 2023), Planck and Pantheon+ Omega_m. LCDM line conventions:
