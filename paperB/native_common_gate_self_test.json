@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "normal_equation_max_abs": 6.039613253960852e-14,
+  "synthetic_x_true": 0.0359,
+  "synthetic_x_hat": 0.03590000000000044,
+  "synthetic_null": 1.5543122344752192e-15
+}
