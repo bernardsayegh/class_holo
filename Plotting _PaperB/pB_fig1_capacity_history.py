@@ -1,54 +1,50 @@
 #!/usr/bin/env python3
-# Paper B Figure 1: S(z), Delta(z), cumulative X_H(<z) with posterior band.
-# Standalone. Run from ~/class_holo_test:
-#   python3 pB_fig1_capacity_history.py chains_test/modelB_A2_noprior_v5_acc.1.txt
-# Uses N_CURVES thinned samples (band is rigidity-thin; 60 suffices, ~2 min).
-import sys, glob, numpy as np, matplotlib.pyplot as plt
-from classy import Class
+"""Paper B Figure 1: capacity history from a frozen non-ladder chain.
 
-N_CURVES = 60
-root = sys.argv[1]
-if root.endswith(".txt"):
-    root = root.rsplit(".", 2)[0]
-files = sorted(glob.glob(root + ".[0-9].txt"))
-names = open(files[0]).readline().lstrip("#").split()
-col = {n: i for i, n in enumerate(names)}
-parts = [np.loadtxt(f)[int(0.30*len(np.loadtxt(f))):] for f in files]
-raw = np.vstack(parts)
-rows = raw[::max(1, len(raw)//N_CURVES)]
-print(f"{len(rows)} samples for curves")
+This is the standalone wrapper around the corrected reconstruction routines in
+``xh_posterior_freeze.py``.  The script name and default output filename are
+unchanged.
 
-def curves(r):
-    c = Class()
-    c.set({'omega_b': r[col['omega_b']], 'omega_cdm': r[col['omega_cdm']],
-           'H0': r[col['H0']], 'tau_reio': r[col['tau_reio']],
-           'n_s': r[col['n_s']],
-           'A_s': r[col['A_s']] if 'A_s' in col else 1e-10*np.exp(r[col['logA']]),
-           'YHe': 0.2454, 'N_ur': 2.0328, 'N_ncdm': 1, 'm_ncdm': 0.06,
-           'interaction_beta': 0.0833333, 'interaction_ieff_type': 4,
-           'f_clust': 0.0, 'super_schwarzschild_correction': 'yes',
-           'super_schw_amp': 0.0, 'super_schw_Amap': 2.0,
-           'super_schw_deltaS': 0.01, 'super_schw_gamma': 2.0,
-           'super_schw_ode': 0, 'output': ''})
-    c.compute()
-    bg = c.get_background(); z = bg['z']; a = 1/(1+z)
-    OL = bg['(.)rho_lambda']/bg['(.)rho_crit']
-    S = 4.5*OL*(1-OL)
-    D = np.clip(1-1/np.maximum(S, 1e-12), 0, None)
-    lna = np.log(a); o = np.argsort(lna)
-    Xc = np.concatenate([[0], np.cumsum(0.5*(D[o][1:]+D[o][:-1])*np.diff(lna[o]))])
-    c.struct_cleanup(); c.empty()
-    return z[o], S[o], D[o], Xc
+Example
+-------
 
-zg = np.linspace(0, 3, 300)
-all_c = [curves(r) for r in rows]
-fig, ax = plt.subplots(3, 1, sharex=True, figsize=(6, 7), layout="constrained")
-for idx, lab in [(1, r'$\mathcal{S}(z)$'), (2, r'$\Delta(z)$'), (3, r'$X_H(<z)$')]:
-    ys = np.array([np.interp(zg, c[0], c[idx]) for c in all_c])
-    lo, md, hi = np.percentile(ys, [16, 50, 84], axis=0)
-    a_ = ax[idx-1]
-    a_.fill_between(zg, lo, hi, alpha=0.3); a_.plot(zg, md, lw=1.5)
-    a_.set_ylabel(lab)
-ax[0].axhline(1, color='gray', ls=':', lw=0.7)
-ax[2].set_xlabel(r'$z$'); ax[2].invert_xaxis()
-fig.savefig("pB_fig1_capacity_history.pdf"); print("saved pB_fig1_capacity_history.pdf")
+    python3 pB_fig1_capacity_history.py chains_freeze/modelB_noshoes.1.txt
+"""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from xh_posterior_freeze import FreezeConfig, evaluate_chain, plot_capacity_history
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("chain", type=Path, help="chain root or any root.N.txt file")
+    parser.add_argument("--burn-in", type=float, default=0.30)
+    parser.add_argument("--curves", type=int, default=60,
+                        help="number of posterior-resampled curves (default: 60)")
+    parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument("--beta", type=float, default=1.0 / 12.0)
+    parser.add_argument("--delta-s", type=float, default=0.01)
+    parser.add_argument("--hard-gate", action="store_true")
+    parser.add_argument("--z-max", type=float, default=3.0)
+    parser.add_argument("--output", type=Path, default=Path("pB_fig1_capacity_history.pdf"))
+    args = parser.parse_args()
+
+    config = FreezeConfig(
+        burn_in=args.burn_in,
+        n_samples=args.curves,
+        seed=args.seed,
+        beta=args.beta,
+        delta_s=args.delta_s,
+        hard_gate=args.hard_gate,
+        z_plot_max=args.z_max,
+    )
+    _, _, _, _, records = evaluate_chain(args.chain, config)
+    out = plot_capacity_history(records, output=args.output, z_max=args.z_max)
+    print(f"saved {out}")
+
+
+if __name__ == "__main__":
+    main()
