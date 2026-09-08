@@ -2731,6 +2731,10 @@ int input_read_parameters_species(struct file_content * pfc,
   class_read_double("f_clust",pba->f_clust);
   class_read_int("interaction_area_dilution",pba->interaction_area_dilution);
   class_read_int("interaction_use_ah_filter",pba->interaction_use_ah_filter);
+  class_read_int("interaction_creation_pressure",pba->interaction_creation_pressure);
+  class_read_int("interaction_gate_geometric",pba->interaction_gate_geometric);
+  class_read_int("interaction_cdm_closure",pba->interaction_cdm_closure);
+  class_read_int("interaction_vacuum_donor",pba->interaction_vacuum_donor);
   /* Complete set of parameters */
   pba->K = -pba->Omega0_k*pow(pba->H0,2);
   if (pba->K > 0.){
@@ -5933,6 +5937,11 @@ int input_default_params(struct background *pba,
   pba->f_clust = 0.;          /**< default: no clustering (full perturbation damping) */
   pba->interaction_area_dilution = _FALSE_;
   pba->interaction_use_ah_filter = _FALSE_;
+  pba->interaction_creation_pressure = 0;
+  pba->interaction_gate_geometric = 0;
+  pba->interaction_cdm_closure = 0;
+  pba->interaction_vacuum_donor = 0;
+  pba->index_bi_rho_lambda = -1;
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
   /** 8.a) Omega fluid */
   /** 8.a.1) PPF approximation */

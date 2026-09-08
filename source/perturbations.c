@@ -9418,8 +9418,18 @@ if (pba->has_super_schw_correction == _TRUE_ &&
 
         /* Clustering fraction: f_clust=1 means no dilution, f_clust=0 means full dilution */
         double unclustered = 1.0 - pba->f_clust;
-        dy[pv->index_pt_delta_cdm] += - unclustered * Q_over_rho * mode_factor 
-                                      * y[pv->index_pt_delta_cdm];
+        if (pba->interaction_cdm_closure == 1) {
+          /* AUDIT Route B closure (dPi = 0, theta_c = 0):
+               delta_c' = -(1 - Gamma/3)(theta_c + metric_continuity) - aH Gamma delta_c,  Gamma = Q/(H rho_c) per ln a.
+             Unfiltered and without f_clust.  The Newtonian theta_c equation is left in legacy form. */
+          double Gamma_N = (a_prime_over_a > 0.) ? Q_over_rho / a_prime_over_a : 0.;
+          double theta_c_here = (ppt->gauge == newtonian) ? y[pv->index_pt_theta_cdm] : 0.;
+          dy[pv->index_pt_delta_cdm] += (Gamma_N / 3.0) * (theta_c_here + metric_continuity);
+          dy[pv->index_pt_delta_cdm] += - Q_over_rho * y[pv->index_pt_delta_cdm];
+        } else {
+          dy[pv->index_pt_delta_cdm] += - unclustered * Q_over_rho * mode_factor
+                                        * y[pv->index_pt_delta_cdm];
+        }
       }
 /* END HOLOGRAPHIC INTERACTION */
 

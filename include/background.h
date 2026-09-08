@@ -122,6 +122,12 @@ struct background
   double f_clust;         /**< clustering fraction for perturbation suppression */
   short interaction_area_dilution; /**< if TRUE, apply dynamic area dilution beta_eff = beta_fund / (tau*aH)^2 */
   short interaction_use_ah_filter; /**< if TRUE, use apparent-horizon filter k/(aH) instead of k/k_eq */
+  /* ---- consistency-audit switches (all default 0 = legacy behaviour) ---- */
+  int interaction_creation_pressure; /**< 1: add Pi=-Q/(3H) to p_tot (Route B background completion) */
+  int interaction_gate_geometric;    /**< 1: accumulator uses S_geom=3*Omega_L*(1+q_geom) instead of the reference parabola */
+  int interaction_cdm_closure;       /**< 0: legacy filtered dilution; 1: creation-pressure closure dPi=0, theta_c=0 */
+  int interaction_vacuum_donor;      /**< 1: Route A, rho_Lambda integrated with d rho_L/dln a = -Q/H */
+  int index_bi_rho_lambda;           /**< integrated vacuum density when interaction_vacuum_donor=1 (else -1) */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
   double c_gamma_over_c_fld; /**< ppf parameter defined in eq. (16) of 0808.3125 [astro-ph] */

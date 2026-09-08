@@ -369,6 +369,27 @@ int background_z_of_tau(
  * @return the error status
  */
 
+/* ===== consistency-audit helper: apparent-horizon kernel Q/H evaluated from densities =====
+   Reproduces the two-fluid sweep kernel used in background_derivs (ieff types 1-4 and default)
+   so the same Q can be evaluated in background_functions (creation pressure) and in the
+   accumulator (geometric gate).  The particle-horizon variant and the super_schw_kappa boost
+   are not reproduced: the audit switches are meant to be used with both off. */
+static double holo_kernel_Q_over_H(struct background *pba, double rho_de, double rho_b, double rho_cdm) {
+  double rho_m_2f = rho_cdm + rho_b;
+  double rho_2f = rho_de + rho_m_2f;
+  if (rho_2f <= 0.) return 0.;
+  double Omega_de_2f = rho_de / rho_2f;
+  double Omega_m_2f  = rho_m_2f / rho_2f;
+  double q_decel_2f = -1.0 + 1.5 * Omega_m_2f;
+  double I_eff;
+  if (pba->interaction_ieff_type == 1) { double denom = 2.0 - q_decel_2f; double kr = (denom > 0.01) ? (3.0/denom) : 300.0; I_eff = kr*kr; }
+  else if (pba->interaction_ieff_type == 2) { double denom = 2.0 - q_decel_2f; I_eff = (denom > 0.01) ? (3.0/denom) : 300.0; }
+  else if (pba->interaction_ieff_type == 3) { double screen = 0.25 + 0.75*Omega_de_2f; I_eff = screen*screen; }
+  else if (pba->interaction_ieff_type == 4) { double dt = 1.0 - q_decel_2f; if (dt < 0.) dt = 0.; I_eff = 0.5*dt; }
+  else { double dt = 1.0 - q_decel_2f; if (dt < 0.) dt = 0.; I_eff = 0.25*dt*dt; }
+  return 4.5 * pba->interaction_beta * I_eff * Omega_de_2f * Omega_m_2f * rho_2f;
+}
+
 int background_functions(
                          struct background * pba,
                          double a,
@@ -539,9 +560,21 @@ int background_functions(
 
   /* Lambda */
   if (pba->has_lambda == _TRUE_) {
-    pvecback[pba->index_bg_rho_lambda] = pba->Omega0_lambda * pow(pba->H0,2);
+    if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0 && pvecback_B != NULL) {
+      /* AUDIT Route A: vacuum density is integrated and depleted by Q */
+      pvecback[pba->index_bg_rho_lambda] = pvecback_B[pba->index_bi_rho_lambda];
+    } else {
+      pvecback[pba->index_bg_rho_lambda] = pba->Omega0_lambda * pow(pba->H0,2);
+    }
     rho_tot += pvecback[pba->index_bg_rho_lambda];
     p_tot -= pvecback[pba->index_bg_rho_lambda];
+    if (pba->interaction_creation_pressure == 1 && pba->interaction_beta != 0. && pba->interaction_vacuum_donor != 1) {
+      /* AUDIT Route B: creation pressure Pi = -Q/(3H) restores nabla_mu T^{mu nu} = 0 at the background level
+         while leaving the integrated H(a) unchanged.  dp_dloga is not updated (p_tot_prime feeds only the PPF branch). */
+      double QoH = holo_kernel_Q_over_H(pba, pvecback[pba->index_bg_rho_lambda], pvecback[pba->index_bg_rho_b],
+                                        (pba->has_cdm == _TRUE_) ? pvecback[pba->index_bg_rho_cdm] : 0.);
+      p_tot += - QoH / 3.0;
+    }
   }
 
   /* fluid with w(a) and constant cs2 */
@@ -1244,6 +1277,8 @@ int background_indices(
 
   /* -> energy density in CDM (holographic, integrated) */
   class_define_index(pba->index_bi_rho_cdm,(pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.),index_bi,1);
+  pba->index_bi_rho_lambda = -1;
+  class_define_index(pba->index_bi_rho_lambda,(pba->has_lambda == _TRUE_) && (pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.) && (pba->interaction_vacuum_donor == 1),index_bi,1);
   /* -> energy density in DR */
   class_define_index(pba->index_bi_rho_dr,pba->has_dr,index_bi,1);
 
@@ -2339,6 +2374,8 @@ int background_initial_conditions(
   /* Holographic CDM initial condition */
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pba->H0*pba->H0*pow(a,-3);
+    if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0)
+      pvecback_integration[pba->index_bi_rho_lambda] = pba->Omega0_lambda*pba->H0*pba->H0;
     if (pba->background_verbose > 3)
       printf("Holographic CDM: initial rho_cdm = %g\n",pvecback_integration[pba->index_bi_rho_cdm]);
 
@@ -2920,6 +2957,9 @@ int background_derivs(
 /* (removed duplicated super_schw_kappa block) */
       /* CDM derivative: SINGLE assignment (includes reservoir decay feedback) */
       dy[pba->index_bi_rho_cdm] = -3.*rho_cdm_holo + Q_over_H;
+      if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0) {
+        dy[pba->index_bi_rho_lambda] = - Q_over_H;   /* AUDIT Route A: conserving vacuum donor */
+      }
     }
   }
 
@@ -2964,6 +3004,20 @@ int background_derivs(
             double Omega_de_2f = rho_de_ss / rho_2f;
             double Omega_m_2f  = 1.0 - Omega_de_2f;
             double S_ss        = 4.5 * Omega_de_2f * Omega_m_2f;
+            if (pba->interaction_gate_geometric == 1) {
+              /* AUDIT: literal apparent-horizon sweep S_geom = 3 Omega_L^full (1+q_geom),
+                 with q_geom from the actual d ln H / d ln a of the integrated background. */
+              double rho_tot_now = pvecback[pba->index_bg_rho_tot];
+              double p_tot_now   = pvecback[pba->index_bg_p_tot];
+              double dlnH_dN = -1.5 * (rho_tot_now + p_tot_now) / rho_tot_now;
+              if (pba->interaction_creation_pressure != 1 && pba->interaction_vacuum_donor != 1) {
+                double QoH_now = holo_kernel_Q_over_H(pba, rho_de_ss, pvecback[pba->index_bg_rho_b],
+                                                      (pba->has_cdm == _TRUE_) ? pvecback[pba->index_bg_rho_cdm] : 0.);
+                dlnH_dN += 0.5 * QoH_now / rho_tot_now;   /* injection without Pi: rho_tot' has the extra +Q */
+              }
+              double q_geom = -1.0 - dlnH_dN;
+              S_ss = 3.0 * (rho_de_ss / rho_tot_now) * (1.0 + q_geom);
+            }
   
             /* Smooth activation: g(S) = 0.5 * (1 + tanh((S-1)/Delta)) */
             double Delta = pba->super_schw_deltaS;
