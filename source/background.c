@@ -2282,6 +2282,48 @@ int background_solve(
  * @return the error status
  */
 
+/* ===== AUDIT Route A: shooting for the early vacuum density =====
+   In the conserving vacuum-donor model the vacuum drains into CDM over cosmic history, so the
+   early vacuum density cannot be Omega0_lambda*H0^2.  Choose it so that the budget closes today:
+       rho_cdm(a=1) + rho_lambda(a=1) = (Omega0_cdm + Omega0_lambda) H0^2,
+   i.e. H(a=1) = H0 and the sampled H0 is the physical endpoint.  The two-fluid kernel depends only
+   on (rho_lambda, rho_b, rho_cdm), so this pre-integration with the same kernel helper is exact up to
+   RK4 truncation.  Bisection in ln(rho_lambda_ini); the residual is monotonic. */
+static double holo_donor_residual(struct background *pba, double a_ini, double ln_rhoL_ini) {
+  const int nstep = 16000;
+  double H02 = pba->H0*pba->H0;
+  double N = log(a_ini), h = -N/nstep;
+  double y0 = pba->Omega0_cdm*H02;          /* rho_cdm * a^3 */
+  double y1 = exp(ln_rhoL_ini);             /* rho_lambda */
+  int i;
+  for (i = 0; i < nstep; i++) {
+    double k0[2], k1[2], k2[2], k3[2], Nn, a3, rb, rc, QoH, t0, t1;
+#define HOLO_F(NN,Y0,Y1,K) do { a3 = exp(3.*(NN)); rb = pba->Omega0_b*H02/a3; rc = (Y0)/a3; \
+      QoH = holo_kernel_Q_over_H(pba,(Y1),rb,rc); (K)[0] = a3*QoH; (K)[1] = -QoH; } while(0)
+    HOLO_F(N, y0, y1, k0);
+    Nn = N + 0.5*h; t0 = y0 + 0.5*h*k0[0]; t1 = y1 + 0.5*h*k0[1]; HOLO_F(Nn, t0, t1, k1);
+    t0 = y0 + 0.5*h*k1[0]; t1 = y1 + 0.5*h*k1[1]; HOLO_F(Nn, t0, t1, k2);
+    Nn = N + h; t0 = y0 + h*k2[0]; t1 = y1 + h*k2[1]; HOLO_F(Nn, t0, t1, k3);
+#undef HOLO_F
+    y0 += h*(k0[0] + 2.*k1[0] + 2.*k2[0] + k3[0])/6.;
+    y1 += h*(k0[1] + 2.*k1[1] + 2.*k2[1] + k3[1])/6.;
+    N  += h;
+  }
+  return y0 + y1 - (pba->Omega0_cdm + pba->Omega0_lambda)*H02;
+}
+
+static double holo_donor_shoot_rho_lambda_ini(struct background *pba, double a_ini) {
+  double base = log(pba->Omega0_lambda*pba->H0*pba->H0);
+  double lo = base - 1.0, hi = base + 8.0, mid;
+  int it;
+  if (holo_donor_residual(pba, a_ini, lo) > 0.) return exp(lo);   /* defensive: no drain */
+  for (it = 0; it < 60; it++) {
+    mid = 0.5*(lo + hi);
+    if (holo_donor_residual(pba, a_ini, mid) > 0.) hi = mid; else lo = mid;
+  }
+  return exp(0.5*(lo + hi));
+}
+
 int background_initial_conditions(
                                   struct precision *ppr,
                                   struct background *pba,
@@ -2371,11 +2413,20 @@ int background_initial_conditions(
     if (pba->background_verbose > 3)
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
   }
+  /* Over-capacity exposure starts at zero.  (Previously never set: X_schw inherited whatever the
+     freshly allocated integration vector contained -- zero on a fresh allocation, garbage on reuse.) */
+  if (pba->has_super_schw_correction == _TRUE_)
+    pvecback_integration[pba->index_bi_X_schw] = 0.;
+
   /* Holographic CDM initial condition */
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pba->H0*pba->H0*pow(a,-3);
-    if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0)
-      pvecback_integration[pba->index_bi_rho_lambda] = pba->Omega0_lambda*pba->H0*pba->H0;
+    if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0) {
+      pvecback_integration[pba->index_bi_rho_lambda] = holo_donor_shoot_rho_lambda_ini(pba, a);
+      if (pba->background_verbose > 1)
+        printf(" -> vacuum donor: early rho_lambda = %.6e x (Omega0_lambda H0^2)\n",
+               pvecback_integration[pba->index_bi_rho_lambda]/(pba->Omega0_lambda*pba->H0*pba->H0));
+    }
     if (pba->background_verbose > 3)
       printf("Holographic CDM: initial rho_cdm = %g\n",pvecback_integration[pba->index_bi_rho_cdm]);
 
