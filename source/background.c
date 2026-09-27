@@ -2312,16 +2312,26 @@ static double holo_donor_residual(struct background *pba, double a_ini, double l
   return y0 + y1 - (pba->Omega0_cdm + pba->Omega0_lambda)*H02;
 }
 
-static double holo_donor_shoot_rho_lambda_ini(struct background *pba, double a_ini) {
+static int holo_donor_shoot_rho_lambda_ini(struct background *pba, double a_ini, double *rho_lambda_ini) {
+  /* The initial bracket [base-1, base+8] is kept so that every case it already brackets bisects
+     exactly as before (bit-identical results).  The early-time drain is about 36*beta in ln rho_lambda
+     from a_ini ~ 1e-14, so the upper edge fails silently for beta > ~0.22, and a negative beta (vacuum
+     growing) can put the root below the lower edge.  Widen as needed, and fail loudly otherwise. */
   double base = log(pba->Omega0_lambda*pba->H0*pba->H0);
   double lo = base - 1.0, hi = base + 8.0, mid;
-  int it;
-  if (holo_donor_residual(pba, a_ini, lo) > 0.) return exp(lo);   /* defensive: no drain */
+  int it, grow;
+  for (grow = 0; grow < 16 && holo_donor_residual(pba, a_ini, lo) > 0.; grow++) lo -= 4.0;
+  for (grow = 0; grow < 16 && holo_donor_residual(pba, a_ini, hi) < 0.; grow++) hi += 8.0;
+  class_test((holo_donor_residual(pba, a_ini, lo) > 0.) || (holo_donor_residual(pba, a_ini, hi) < 0.),
+             pba->error_message,
+             "vacuum-donor shooting could not bracket the closure root (interaction_beta = %g)",
+             pba->interaction_beta);
   for (it = 0; it < 60; it++) {
     mid = 0.5*(lo + hi);
     if (holo_donor_residual(pba, a_ini, mid) > 0.) hi = mid; else lo = mid;
   }
-  return exp(0.5*(lo + hi));
+  *rho_lambda_ini = exp(0.5*(lo + hi));
+  return _SUCCESS_;
 }
 
 int background_initial_conditions(
@@ -2422,7 +2432,8 @@ int background_initial_conditions(
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
     pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pba->H0*pba->H0*pow(a,-3);
     if (pba->interaction_vacuum_donor == 1 && pba->index_bi_rho_lambda >= 0) {
-      pvecback_integration[pba->index_bi_rho_lambda] = holo_donor_shoot_rho_lambda_ini(pba, a);
+      class_call(holo_donor_shoot_rho_lambda_ini(pba, a, &(pvecback_integration[pba->index_bi_rho_lambda])),
+                 pba->error_message, pba->error_message);
       if (pba->background_verbose > 1)
         printf(" -> vacuum donor: early rho_lambda = %.6e x (Omega0_lambda H0^2)\n",
                pvecback_integration[pba->index_bi_rho_lambda]/(pba->Omega0_lambda*pba->H0*pba->H0));
