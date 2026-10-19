@@ -751,6 +751,11 @@ int hmcode_compute(
                            ratio_m = pow(pba->h*mass[index_mass_p]/mb,2.); //hmod%nbar
                            fb = pba->Omega0_b/pba->Omega0_m;
                            fc = pba->Omega0_cdm/pba->Omega0_m;
+                           /* class_holo: with the interaction on, Omega0_cdm is the early-time normalization
+                              (rho_cdm a^3 before injection) while Omega0_m is the present-day value from the
+                              background table, so use the present-day CDM fraction instead.  LCDM is unchanged. */
+                           if (pba->interaction_beta != 0.)
+                             fc = (pba->Omega0_m-pba->Omega0_b-pba->Omega0_ncdm_tot)/pba->Omega0_m;
                            fs = sb;
                            DMONLY_halo_mass_fraction = fc+(fb-fs)*ratio_m/(1.+ratio_m);
 
