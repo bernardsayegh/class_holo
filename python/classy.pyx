@@ -1766,6 +1766,18 @@ cdef class Class:
             # the first index must be smaller or equal to the second one.
             # If not, raise and error.
             if (z_max_requested > z_max_nonlinear and self.fo.index_tau_min_nl>0):
+                # class_holo: the P(k,z) table extends one sampling step beyond z_max_pk, and HMcode can fail
+                # to find k_NL only in that padding (low amplitude, high z).  Return the redshifts where the
+                # non-linear spectrum was computed, as long as they still cover the requested z_max_pk.
+                n_nl = self.fo.ln_tau_size_nl
+                if n_nl >= 2 and z[self.fo.ln_tau_size - n_nl] >= self.pt.z_max_pk:
+                    first = self.fo.ln_tau_size - n_nl
+                    kk = np.array([self.fo.k[index_k]*(1./self.ba.h if h_units else 1.) for index_k in range(self.fo.k_size_pk)])
+                    pk_nl = np.zeros((self.fo.k_size_pk, n_nl), 'float64')
+                    for index_tau in range(first, self.fo.ln_tau_size):
+                        for index_k in range(self.fo.k_size_pk):
+                            pk_nl[index_k, index_tau - first] = np.exp(self.fo.ln_pk_nl[index_pk][index_tau * self.fo.k_size + index_k])
+                    return pk_nl, kk, z[first:].copy()
                 raise CosmoSevereError("get_pk_and_k_and_z() is trying to return P(k,z) up to z_max=%e (the redshift range of computed pk); but the input parameters sent to CLASS (in particular ppr->nonlinear_min_k_max=%e) were such that the non-linear P(k,z) could only be consistently computed up to z=%e; increase the precision parameter 'nonlinear_min_k_max', or only obtain the linear pk"%(z_max_requested,self.pr.nonlinear_min_k_max,z_max_nonlinear))
 
         # get list of k
