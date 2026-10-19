@@ -9227,35 +9227,9 @@ int perturbations_derivs(double tau,
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
 
-/* NEWTONIAN PATCH: SCR->CDM drag duplicated from synchronous branch.
-   Delta-source only; theta untouched by design (Q^mu || u_c^mu).
-   Frame-shift in deltaQ is O((aH/k)^2): exact subhorizon. */
-if (pba->has_super_schw_correction == _TRUE_ &&
-    pba->index_bg_Q_scr_to_cdm_over_H >= 0 &&
-    pba->super_schw_gamma != 0.) {
-
-  double a = pvecback[pba->index_bg_a];
-  double H = pvecback[pba->index_bg_H];
-  double rho_cdm = pvecback[pba->index_bg_rho_cdm];
-  double Qscr_over_H = pvecback[pba->index_bg_Q_scr_to_cdm_over_H];
-
-  if (rho_cdm > 0. && Qscr_over_H != 0.) {
-    /* Qscr_over_H = Q/H  =>  aQ/rho = a*H*(Q/H)/rho */
-    double coupling = a * H * Qscr_over_H;  /* aH * (Q/(H rho_c)) - now dimensionless */
-
-    double delta_cdm = y[pv->index_pt_delta_cdm];
-
-    /* δQ/Q = δ_cdm (stable default) */
-    double deltaQ_over_Q = 0.0; /* deltaQ_over_Q = 0 (homogeneous) */
-
-    /* δ_c' += (aQ/rho_c) (δ_c - δQ/Q) */
-    /* Modulate by (1 - f_clust): f_clust=0 -> full effect, f_clust=1 -> no effect */
-      double f_clust_scr = pba->f_clust;  /* reuse the f_clust parameter */
-      dy[pv->index_pt_delta_cdm] += (1.0 - f_clust_scr) * coupling * (deltaQ_over_Q - delta_cdm);
-  }
-}
-
-        
+        /* v2.1: the SCR->CDM drag copy that used to sit here was removed.  The Option-C block after the
+           synchronous branch below is not gauge-restricted, so in Newtonian gauge the drag was applied twice.
+           It now acts once in each gauge.  (Inactive in all production runs: super_schw_amp = 0.) */
       }
 
       /** - ----> synchronous gauge: cdm density only (velocity set to zero by definition of the gauge) */
@@ -9269,22 +9243,23 @@ if (pba->has_super_schw_correction == _TRUE_ &&
        * This modifies the CDM density perturbation equation to include the effect
        * of holographic energy injection. The key physics:
        *
-       * 1. GAUGE: Synchronous gauge only. If you need Newtonian gauge, add equivalent terms.
+       * 1. GAUGE: the synchronous CDM-comoving branch is the complete implementation.  The
+       *    Newtonian branch applies the same dilution to the Newtonian contrast and omits the
+       *    horizon-scale frame-shift terms (Q*Phi and the gauge shift of deltaQ).
        *
-       * 2. CLUSTERING FRACTION (f_clust):
-       *    - f_clust = 0: Homogeneous injection (δQ = 0) -> maximum S8 suppression
-       *    - f_clust = 1: Clustered injection (δQ ∝ δ_c) -> no S8 change
-       *    Physical choice: f_clust = 0 (horizon doesn't know about local overdensities)
+       * 2. CLOSURE: with Q^mu parallel to u_c and a homogeneous (w=-1) vacuum, momentum
+       *    conservation forces deltaV = 0 on CDM-comoving slices and energy conservation then
+       *    forces deltaQ = 0 there.  In synchronous gauge this gives
+       *        delta_c' = -h'/2 - (aQ/rho_c) delta_c.
+       *    That is interaction_mode_filter = 0 with f_clust = 0 (enforced in input.c).
        *
-       * 3. MODE FILTER k/(aH):
-       *    - Sub-horizon modes (k >> aH): filter saturates -> full suppression
-       *    - Super-horizon modes (k << aH): filter → 0 -> no modification
-       *    - This gives nearly scale-independent suppression for observable k
+       * 3. LEGACY (interaction_mode_filter = 1, default, v2.0 behaviour): the dilution term is
+       *    multiplied by (1 - f_clust) F(k), F = (k/k_eq)^2/(1+(k/k_eq)^2) (or k/(aH) with
+       *    interaction_use_ah_filter).  This corresponds to deltaQ = [1-(1-f_clust)F] Q delta_c
+       *    with a smooth vacuum, which does not conserve energy at the perturbation level.
        *
-       * 4. NO VELOCITY PERTURBATION: We assume Q^μ ∥ u_c^μ (energy-momentum transfer
-       *    aligned with CDM 4-velocity), so no extra Euler equation terms needed.
-       *
-       * The equation: δ'_c += -(1 - f_clust) * (aQ/ρ_c) * filter * δ_c
+       * 4. NO VELOCITY TERM: Q^mu parallel to u_c means no momentum transfer in the CDM frame,
+       *    so the CDM Euler equation is unchanged.
        * ============================================================================== */
 
 /* --- SCR->CDM energy-transfer consistency (Option C) -------------------------
@@ -9415,6 +9390,7 @@ if (pba->has_super_schw_correction == _TRUE_ &&
           x = k / k_eq;
         }
         double mode_factor = x * x / (1.0 + x * x);
+        if (pba->interaction_mode_filter == 0) mode_factor = 1.0;  /* conserving closure: deltaQ = 0 on CDM-comoving slices */
 
         /* Clustering fraction: f_clust=1 means no dilution, f_clust=0 means full dilution */
         double unclustered = 1.0 - pba->f_clust;

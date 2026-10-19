@@ -2735,6 +2735,18 @@ int input_read_parameters_species(struct file_content * pfc,
   class_read_int("interaction_gate_geometric",pba->interaction_gate_geometric);
   class_read_int("interaction_cdm_closure",pba->interaction_cdm_closure);
   class_read_int("interaction_vacuum_donor",pba->interaction_vacuum_donor);
+  class_read_int("interaction_mode_filter",pba->interaction_mode_filter);
+  class_test((pba->interaction_mode_filter != 0) && (pba->interaction_mode_filter != 1),
+             errmsg,
+             "interaction_mode_filter must be 0 (no filter) or 1 (legacy F(k) filter); got %d",
+             pba->interaction_mode_filter);
+  /* With Q^mu parallel to u_c and a homogeneous (w=-1) vacuum, momentum conservation forces deltaV=0 on
+     CDM-comoving slices and energy conservation then forces deltaQ=0 there.  The unfiltered branch is that
+     closure only for f_clust=0; f_clust!=0 would need vacuum perturbations the solver does not evolve. */
+  class_test((pba->interaction_mode_filter == 0) && (pba->f_clust != 0.),
+             errmsg,
+             "interaction_mode_filter=0 (conserving geodesic-vacuum closure) requires f_clust=0; got f_clust=%g",
+             pba->f_clust);
   /* Complete set of parameters */
   pba->K = -pba->Omega0_k*pow(pba->H0,2);
   if (pba->K > 0.){
@@ -5941,6 +5953,7 @@ int input_default_params(struct background *pba,
   pba->interaction_gate_geometric = 0;
   pba->interaction_cdm_closure = 0;
   pba->interaction_vacuum_donor = 0;
+  pba->interaction_mode_filter = 1;          /**< default: legacy F(k) filter, reproduces v2.0 */
   pba->index_bi_rho_lambda = -1;
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
   /** 8.a) Omega fluid */

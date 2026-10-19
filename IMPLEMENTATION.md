@@ -160,6 +160,8 @@ The holographic principle predicts f_clust = 0 from first principles. MCMC valid
 - f_clust = 1 fixed: strongly disfavoured (development grid: +146 vs ΛCDM; publication grid: +5.8 vs ΛCDM, ~12 worse than Model A)
 - f_clust free: consistent with zero (development grid: 0.03 ± 0.01; publication grid: 0.20 ± 0.16, 1.3σ from zero)
 
+**v2.1 note (conserving closure).** With Q^μ = Q u_c^μ and a homogeneous w = −1 vacuum, momentum conservation forces δV = 0 on CDM-comoving slices, and energy conservation then forces δQ = 0 there (geodesic interacting vacuum). In synchronous gauge this is δ_c' = −h'/2 − (aQ/ρ_c) δ_c: `interaction_mode_filter = 0` with `f_clust = 0`. The solver refuses `f_clust ≠ 0` in that mode, because a clustered source would need vacuum perturbations the solver does not evolve. The legacy branch (`interaction_mode_filter = 1`, the default, identical to v2.0) multiplies the dilution term by (1 − f_clust) F(k) with F = (k/k_eq)²/(1 + (k/k_eq)²); with a smooth vacuum this does not conserve energy at the perturbation level, and the f_clust ≠ 0 results above come from that branch.
+
 ### 1.8 CPL Surrogate Analysis
 
 The holographic background is indistinguishable from ΛCDM. Fitting H(z) and D_M(z) to CPL parameterisation w(a) = w₀ + wₐ(1−a):
@@ -218,7 +220,8 @@ Reads all new parameters from .ini/.yaml files with defaults.
 |-----------|---------|-------------|
 | `interaction_beta` | 0 | Coupling strength. Theory predicts 1/12 ≈ 0.0833. Set to 0 to disable interaction. |
 | `interaction_ieff_type` | 0 | I_eff formulation: 0=squared, 1=lag², 2=lag, 3=fourth power, **4=unsquared (preferred)** |
-| `f_clust` | 0 | Clustering fraction [0,1]. Theory predicts 0 (homogeneous injection). |
+| `f_clust` | 0 | Clustering fraction [0,1]. Theory predicts 0 (homogeneous injection). Must be 0 when `interaction_mode_filter = 0`. |
+| `interaction_mode_filter` | 1 | 1 = legacy F(k) filter on the dilution term (v2.0 behaviour); **0 = no filter, conserving geodesic-vacuum closure (use for new runs)**. |
 
 ### 3.2 Super-Schwarzschild Parameters
 

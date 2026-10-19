@@ -127,6 +127,8 @@ struct background
   int interaction_gate_geometric;    /**< 1: accumulator uses S_geom=3*Omega_L*(1+q_geom) instead of the reference parabola */
   int interaction_cdm_closure;       /**< 0: legacy filtered dilution; 1: creation-pressure closure dPi=0, theta_c=0 */
   int interaction_vacuum_donor;      /**< 1: Route A, rho_Lambda integrated with d rho_L/dln a = -Q/H */
+  int interaction_mode_filter;       /**< 1 (default, v2.0 behaviour): dilution term multiplied by F(k)=(k/k_eq)^2/(1+(k/k_eq)^2);
+                                          0: no filter, F=1, the geodesic-vacuum closure (deltaQ=0 on CDM-comoving slices); requires f_clust=0 */
   int index_bi_rho_lambda;           /**< integrated vacuum density when interaction_vacuum_donor=1 (else -1) */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
