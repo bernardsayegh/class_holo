@@ -2423,10 +2423,14 @@ int background_initial_conditions(
     if (pba->background_verbose > 3)
       printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_dcdm],pba->Omega_ini_dcdm);
   }
-  /* Over-capacity exposure starts at zero.  (Previously never set: X_schw inherited whatever the
-     freshly allocated integration vector contained -- zero on a fresh allocation, garbage on reuse.) */
-  if (pba->has_super_schw_correction == _TRUE_)
+  /* Over-capacity exposure and backreaction reservoir start at zero.  (Previously never set: X_schw, and
+     until v2.1.1 rho_scr, inherited whatever the freshly allocated integration vector contained -- zero on a
+     fresh allocation, garbage on reuse.  Even with super_schw_amp = 0, which keeps rho_scr out of H(z), a
+     nonzero rho_scr would decay into CDM.) */
+  if (pba->has_super_schw_correction == _TRUE_) {
     pvecback_integration[pba->index_bi_X_schw] = 0.;
+    pvecback_integration[pba->index_bi_rho_scr] = 0.;
+  }
 
   /* Holographic CDM initial condition */
   if ((pba->has_cdm == _TRUE_) && (pba->interaction_beta != 0.)) {
@@ -3106,19 +3110,23 @@ int background_derivs(
               dy[pba->index_bi_X_schw] = qp1 * gS * frac_ss - qp1 * X_now;
             }
   
-            /* (B) rho_scr reservoir */
-            double rho_scr_now = y[pba->index_bi_rho_scr];
-            double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
-            double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
-  
-            dy[pba->index_bi_rho_scr] = source_scr - decay_scr;
-  
-            /* Energy conserving: decay goes back into CDM */
-            Q_scr_to_cdm_over_H = decay_scr;
+            /* (B) rho_scr reservoir.  With super_schw_amp = 0 (mapping only: background_functions keeps rho_scr
+               out of H(z) and exports no SCR->CDM rate) the reservoir is off here too: no source, no decay and
+               nothing credited to CDM, whatever rho_scr holds (v2.1.1). */
+            if (pba->super_schw_amp != 0.0) {
+              double rho_scr_now = y[pba->index_bi_rho_scr];
+              double source_scr = pba->super_schw_amp * rho_2f * gS * frac_ss;
+              double decay_scr  = pba->super_schw_gamma * (1.0 - gS) * rho_scr_now;
 
-            /* Apply reservoir feedback to CDM (must be here, after computation) */
-            if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm >= 0)) {
-              dy[pba->index_bi_rho_cdm] += Q_scr_to_cdm_over_H;
+              dy[pba->index_bi_rho_scr] = source_scr - decay_scr;
+
+              /* Energy conserving: decay goes back into CDM */
+              Q_scr_to_cdm_over_H = decay_scr;
+
+              /* Apply reservoir feedback to CDM (must be here, after computation) */
+              if ((pba->has_cdm == _TRUE_) && (pba->index_bi_rho_cdm >= 0)) {
+                dy[pba->index_bi_rho_cdm] += Q_scr_to_cdm_over_H;
+              }
             }
           }
         }

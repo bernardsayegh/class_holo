@@ -727,6 +727,13 @@ int perturbations_init(
              ppt->error_message,
              "In the synchronous gauge, it is not self-consistent to assume no CDM: the later is used to define the initial timelike hypersurface. You can either add a negligible amount of CDM, or switch to newtonian gauge");
 
+  /* v2.1.1: the conserving closure is complete only on CDM-comoving slices (synchronous gauge).  In Newtonian gauge a
+     vacuum that is homogeneous in the CDM frame is perturbed (delta V_N = -aQ alpha), which the solver does not
+     evolve, so the interacting Newtonian equations would not conserve energy. */
+  class_test((pba->interaction_beta != 0.) && (pba->interaction_mode_filter == 0) && (ppt->gauge == newtonian),
+             ppt->error_message,
+             "the conserving closure (interaction_mode_filter=0) is implemented in synchronous gauge only");
+
   class_test ((ppr->tight_coupling_approximation < first_order_MB) ||
               (ppr->tight_coupling_approximation > compromise_CLASS),
               ppt->error_message,

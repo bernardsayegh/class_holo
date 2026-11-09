@@ -2747,6 +2747,16 @@ int input_read_parameters_species(struct file_content * pfc,
              errmsg,
              "interaction_mode_filter=0 (conserving geodesic-vacuum closure) requires f_clust=0; got f_clust=%g",
              pba->f_clust);
+  /* ... and it is that closure only with the vacuum donor (the vacuum loses what CDM gains), the legacy CDM
+     equation (not the creation-pressure closure) and no creation pressure (v2.1.1).  Synchronous gauge is
+     enforced in perturbations_init. */
+  class_test((pba->interaction_mode_filter == 0) && (pba->interaction_beta != 0.) &&
+             ((pba->interaction_vacuum_donor != 1) || (pba->interaction_cdm_closure != 0) ||
+              (pba->interaction_creation_pressure != 0)),
+             errmsg,
+             "interaction_mode_filter=0 (conserving geodesic-vacuum closure) requires interaction_vacuum_donor=1, "
+             "interaction_cdm_closure=0 and interaction_creation_pressure=0; got %d, %d, %d",
+             pba->interaction_vacuum_donor, pba->interaction_cdm_closure, pba->interaction_creation_pressure);
   /* Complete set of parameters */
   pba->K = -pba->Omega0_k*pow(pba->H0,2);
   if (pba->K > 0.){
