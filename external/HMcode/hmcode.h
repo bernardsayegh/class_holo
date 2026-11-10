@@ -42,7 +42,22 @@ struct hmcode_growth {
 
   int index_fg_g;
   int index_fg_dg;
+  int index_fg_gc;      /* class_holo v2.1.2: CDM density contrast (diluted by the injection) when holo != 0 */
   int fg_size;
+
+  /* class_holo v2.1.2: growth of the interacting model (pba->interaction_hmcode_growth) */
+  int holo;             /* 0: uncoupled table; 1: interacting growth, Dolag factor; 2: interacting growth, no Dolag factor */
+  struct background * holo_pba;
+  double holo_Oc0;      /* CDM today (without ncdm), in units of the critical density today */
+  double holo_Onc0;     /* ncdm today, treated as dust like in HMcode's own table */
+  double holo_OV0;      /* vacuum today */
+  int holo_n;
+  double * holo_lna;    /* uniform grid in ln a */
+  double * holo_Xc;     /* rho_cdm a^3 / rho_crit0 */
+  double * holo_V;      /* rho_lambda / rho_crit0 */
+  double holo_q;        /* Q/(H rho_cdm) at the last hmcode_norad call */
+  double holo_fc;       /* rho_cdm/(rho_cdm + rho_b + rho_ncdm) at the last call */
+  double holo_fcb;      /* rho_cdm/(rho_cdm + rho_b) at the last call */
 
   int index_norad_H2;
   int index_norad_AH;

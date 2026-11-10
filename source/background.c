@@ -374,7 +374,7 @@ int background_z_of_tau(
    so the same Q can be evaluated in background_functions (creation pressure) and in the
    accumulator (geometric gate).  The particle-horizon variant and the super_schw_kappa boost
    are not reproduced: the audit switches are meant to be used with both off. */
-static double holo_kernel_Q_over_H(struct background *pba, double rho_de, double rho_b, double rho_cdm) {
+double holo_kernel_Q_over_H(struct background *pba, double rho_de, double rho_b, double rho_cdm) {
   double rho_m_2f = rho_cdm + rho_b;
   double rho_2f = rho_de + rho_m_2f;
   if (rho_2f <= 0.) return 0.;

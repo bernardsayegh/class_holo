@@ -27,6 +27,18 @@
 #include "perturbations.h"
 #include "parallel.h"
 
+/* class_holo v2.1.2: aQ/H = a (Q/H) of the vacuum donor and the matter density that defines delta_m */
+static double holo_pt_QoH(struct background *pba, double *pvecback) {
+  return holo_kernel_Q_over_H(pba, pvecback[pba->index_bg_rho_lambda], pvecback[pba->index_bg_rho_b], pvecback[pba->index_bg_rho_cdm]);
+}
+static double holo_pt_rho_m(struct background *pba, double *pvecback) {
+  double rho_m = pvecback[pba->index_bg_rho_b] + pvecback[pba->index_bg_rho_cdm];
+  int n;
+  if (pba->has_ncdm == _TRUE_)
+    for (n=0; n<pba->N_ncdm; n++) rho_m += pvecback[pba->index_bg_rho_ncdm1+n];
+  return rho_m;
+}
+
 
 /**
  * Source function \f$ S^{X} (k, \tau) \f$ at a given conformal time tau.
@@ -6689,6 +6701,11 @@ int perturbations_einstein(
     if (ppt->has_matter_source_in_current_gauge == _FALSE_) {
       if (ppt->has_source_delta_m == _TRUE_) {
         ppw->delta_m += 3. *ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H] * ppw->theta_m/k2;
+        if ((pba->interaction_beta != 0.) && (pba->interaction_vacuum_donor == 1) && (pba->has_lambda == _TRUE_)) {
+          /* class_holo v2.1.2: rho_m' = -3 aH rho_m + aQ, so the comoving density has -(aQ/rho_m) theta_m/k^2 */
+          ppw->delta_m -= ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H]
+            *holo_pt_QoH(pba,ppw->pvecback)/holo_pt_rho_m(pba,ppw->pvecback) * ppw->theta_m/k2;
+        }
         // note: until 2.4.3 there was a typo, the factor was (-2 H'/H) instead
         // of (3 aH). There is the same typo in the CLASSgal paper
         // 1307.1459v1,v2,v3. It came from a confusion between (1+w_total)
@@ -6702,6 +6719,9 @@ int perturbations_einstein(
 
       if (ppt->has_source_delta_cb == _TRUE_) {
         ppw->delta_cb += 3. *ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H] * ppw->theta_cb/k2;//check gauge transformation
+        if ((pba->interaction_beta != 0.) && (pba->interaction_vacuum_donor == 1) && (pba->has_lambda == _TRUE_))
+          ppw->delta_cb -= ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H]*holo_pt_QoH(pba,ppw->pvecback)
+            /(ppw->pvecback[pba->index_bg_rho_cdm]+ppw->pvecback[pba->index_bg_rho_b]) * ppw->theta_cb/k2;
       }
 
       if (ppt->has_source_theta_m == _TRUE_) {
@@ -8454,6 +8474,9 @@ int perturbations_print_variables(double tau,
 
       if (pba->has_cdm == _TRUE_) {
         delta_cdm -= 3. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
+        if ((pba->interaction_beta != 0.) && (pba->interaction_vacuum_donor == 1) && (pba->has_lambda == _TRUE_))
+          /* class_holo v2.1.2: rho_cdm' = -3 aH rho_cdm + aQ (as for the decay radiation above) */
+          delta_cdm += pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*holo_pt_QoH(pba,pvecback)/pvecback[pba->index_bg_rho_cdm]*alpha;
         theta_cdm += k*k*alpha;
       }
 

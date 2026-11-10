@@ -129,6 +129,9 @@ struct background
   int interaction_vacuum_donor;      /**< 1: Route A, rho_Lambda integrated with d rho_L/dln a = -Q/H */
   int interaction_mode_filter;       /**< 1 (default, v2.0 behaviour): dilution term multiplied by F(k)=(k/k_eq)^2/(1+(k/k_eq)^2);
                                           0: no filter, F=1, the geodesic-vacuum closure (deltaQ=0 on CDM-comoving slices); requires f_clust=0 */
+  int interaction_hmcode_growth;     /**< HMcode's growth table with the interaction on (vacuum donor, v2.1.2): 1 (default) from the
+                                          interacting model itself, with HMcode 2020's Dolag factor; 2 the same without that
+                                          factor; 0 the uncoupled table of standard CLASS (v2.1 and earlier) */
   int index_bi_rho_lambda;           /**< integrated vacuum density when interaction_vacuum_donor=1 (else -1) */
   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
@@ -407,6 +410,15 @@ struct background_parameters_for_distributions {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+  /* class_holo: two-fluid sweep kernel Q/H, in the units of the densities passed in (homogeneous of degree one);
+     shared with perturbations.c and HMcode since v2.1.2 */
+  double holo_kernel_Q_over_H(
+                              struct background *pba,
+                              double rho_de,
+                              double rho_b,
+                              double rho_cdm
+                              );
 
   int background_at_z(
                       struct background *pba,

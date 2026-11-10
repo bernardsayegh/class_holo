@@ -8,6 +8,21 @@
 #include "parallel.h"
 #include "sys/time.h"
 
+/* class_holo v2.1.2: rho_cdm a^3 and rho_lambda (units of rho_crit0) at a, linear in the logarithm of each on a
+   uniform ln a grid sampled from the background table */
+static void hmcode_holo_interp(struct hmcode_growth *phg, double a, double *Xc, double *V) {
+  double x0 = phg->holo_lna[0];
+  double dx = (phg->holo_lna[phg->holo_n-1]-x0)/(double)(phg->holo_n-1);
+  double u = (log(a)-x0)/dx;
+  int i = (int)floor(u);
+  double t;
+  if (i < 0) i = 0;
+  if (i > phg->holo_n-2) i = phg->holo_n-2;
+  t = u - (double)i;
+  *Xc = exp((1.-t)*log(phg->holo_Xc[i]) + t*log(phg->holo_Xc[i+1]));
+  *V  = exp((1.-t)*log(phg->holo_V[i]) + t*log(phg->holo_V[i+1]));
+}
+
 /**
  * Computes the nonlinear correction on the linear power spectrum with
  * HMcode 2015 (Mead et al. 1505.07833), 2016 (Mead et al. 1602.02154)
@@ -575,6 +590,7 @@ int hmcode_compute(
       pfo->error_message);
       DEcorr = phw->dark_energy_correction*g_lcdm/g_wcdm;*/
     DEcorr = phw->dark_energy_correction*g_lcdm/growth;
+    if (phg->holo == 2) DEcorr = 1.;   /* class_holo v2.1.2: interacting growth table without the Dolag factor */
     break;
   }
   switch (pfo->hm_version ){
@@ -1092,6 +1108,28 @@ int hmcode_dark_energy_correction(
       phw->dark_energy_correction = growth/g_lcdm;
       break;
     }
+  }
+
+  /** - class_holo v2.1.2 (interaction_hmcode_growth = 1): HMcode 2020's Dolag factor for a growth history that differs
+        from LCDM with the same Omega_m today, as HMcode does for dynamical dark energy */
+  else if (phw->phg->holo == 1) {
+    class_call(hmcode_growint(ppr,pba,pfo,1./(1.+pfo->z_infinity),-1.,0.,&g_lcdm),
+               pfo->error_message, pfo->error_message);
+    class_call(array_spline_hunt(phw->phg->a_table,
+                                 phw->phg->a_size,
+                                 1./(pfo->z_infinity+1.),
+                                 &last_index,
+                                 &h,
+                                 &a,
+                                 &b,
+                                 pfo->error_message),
+               pfo->error_message,
+               pfo->error_message);
+    growth = array_spline_eval(phw->phg->normgrowth_table,phw->phg->ddnormgrowth_table,last_index,last_index+1,h,a,b);
+    phw->dark_energy_correction = growth/g_lcdm;
+    if (pfo->fourier_verbose > 0)
+      printf(" -> HMcode Dolag factor for the interacting growth history: %.4f (growth to z = %g: model %.5f, LCDM %.5f)\n",
+             phw->dark_energy_correction, pfo->z_infinity, growth, g_lcdm);
   }
 
   /** - otherwise, we assume no dynamical Dark Energy (w is -1) */
@@ -2310,9 +2348,22 @@ int hmcode_noradiation_growth_init(
   class_alloc(phg,sizeof(struct hmcode_growth),pfo->error_message);
   phw->phg = phg;
 
+  /* class_holo v2.1.2: growth table of the interacting model (interaction_hmcode_growth = 1 or 2) where it is
+     implemented: vacuum donor, cosmological constant, apparent-horizon kernel.  Otherwise the uncoupled table. */
+  phg->holo = pba->interaction_hmcode_growth;
+  if (!((pba->interaction_beta != 0.) && (pba->interaction_vacuum_donor == 1) && (pba->has_lambda == _TRUE_) &&
+        (pba->has_cdm == _TRUE_) && (pba->has_fld == _FALSE_) && (pba->interaction_use_particle_horizon == _FALSE_)))
+    phg->holo = 0;
+  phg->holo_pba = pba;
+  phg->holo_lna = NULL;
+  phg->holo_Xc = NULL;
+  phg->holo_V = NULL;
+  phg->index_fg_gc = -1;
+
   index_fg = 0;
   class_define_index(phg->index_fg_g,_TRUE_,index_fg,1);
   class_define_index(phg->index_fg_dg,_TRUE_,index_fg,1);
+  class_define_index(phg->index_fg_gc,(phg->holo != 0),index_fg,1);
 
   phg->fg_size = index_fg;
 
@@ -2378,9 +2429,49 @@ int hmcode_noradiation_growth_init(
              pfo->error_message,
              "Cannot use scalar field scf with HMcode (not yet coded)");
 
+  if (phg->holo != 0) {
+    /* class_holo v2.1.2: the interacting model's CDM and vacuum histories, sampled from the background table.
+       (Q/H depends on the densities only, so these histories are the same with or without radiation.) */
+    double *pvb;
+    double tau_b, a_b, lna_b, lna0, H02;
+    int last_index_b = 0, i_b;
+    phg->holo_n = 4000;
+    class_alloc(phg->holo_lna,phg->holo_n*sizeof(double),pfo->error_message);
+    class_alloc(phg->holo_Xc,phg->holo_n*sizeof(double),pfo->error_message);
+    class_alloc(phg->holo_V,phg->holo_n*sizeof(double),pfo->error_message);
+    class_alloc(pvb,pba->bg_size*sizeof(double),pfo->error_message);
+    H02 = pba->H0*pba->H0;
+    lna0 = log(0.5*a_ini);
+    for (i_b=0; i_b<phg->holo_n; i_b++) {
+      lna_b = lna0*(1.-(double)i_b/(double)(phg->holo_n-1));
+      a_b = exp(lna_b);
+      class_call(background_tau_of_z(pba,1./a_b-1.,&tau_b),
+                 pba->error_message,
+                 pfo->error_message);
+      class_call(background_at_tau(pba,tau_b,long_info,inter_normal,&last_index_b,pvb),
+                 pba->error_message,
+                 pfo->error_message);
+      phg->holo_lna[i_b] = lna_b;
+      phg->holo_Xc[i_b] = pvb[pba->index_bg_rho_cdm]*a_b*a_b*a_b/H02;
+      phg->holo_V[i_b] = pvb[pba->index_bg_rho_lambda]/H02;
+    }
+    free(pvb);
+    phg->holo_Oc0 = phg->holo_Xc[phg->holo_n-1];
+    phg->holo_OV0 = phg->holo_V[phg->holo_n-1];
+    phg->holo_Onc0 = phg->Omega_cdm - phg->holo_Oc0;   /* = Omega0_m - Omega0_b - CDM today = ncdm today */
+    class_test((phg->holo_Oc0 <= 0.) || (phg->holo_OV0 <= 0.) || (phg->holo_Xc[0] <= 0.) || (phg->holo_V[0] <= 0.),
+               pfo->error_message,
+               "HMcode growth of the interacting model needs positive CDM and vacuum densities (today: %e, %e)",
+               phg->holo_Oc0, phg->holo_OV0);
+  }
+
   class_call(hmcode_noradiation_growth_compute(pfo, phw),
              phw->phg->error_message,
              pfo->error_message);
+
+  if ((phg->holo != 0) && (pfo->fourier_verbose > 0))
+    printf(" -> HMcode growth table from the interacting model (interaction_hmcode_growth = %d): CDM a^3 early/today = %.4f, g/a today = %.4f\n",
+           phg->holo, phg->holo_Xc[0]/phg->holo_Oc0, phg->growth_table[(phg->a_size-1)*phg->gt_size+phg->index_gt_g]);
 
   return _SUCCESS_;
 }
@@ -2412,6 +2503,9 @@ int hmcode_noradiation_growth_free(
   free(phg->ddnormgrowth_table);
   free(phg->dda_table);
   free(phg->pvecnorad);
+  if (phg->holo_lna != NULL) free(phg->holo_lna);
+  if (phg->holo_Xc != NULL) free(phg->holo_Xc);
+  if (phg->holo_V != NULL) free(phg->holo_V);
   free(phg);
 
   return _SUCCESS_;
@@ -2468,6 +2562,7 @@ int hmcode_noradiation_growth_compute(
 
   pvec_growth[phg->index_fg_g] = pow(phg->a_ini,1.-3.*f/5.);
   pvec_growth[phg->index_fg_dg] = (1.-3.*f/5.)*pow(phg->a_ini,-3.*f/5.);
+  if (phg->holo != 0) pvec_growth[phg->index_fg_gc] = pvec_growth[phg->index_fg_g];
 
   /** - perform the integration */
   class_call(generic_evolver(hmcode_growth_derivs,
@@ -2612,8 +2707,18 @@ int hmcode_growth_derivs(
   AH_norad = phg->pvecnorad[phg->index_norad_AH];
   Om_norad = phg->pvecnorad[phg->index_norad_Om];
 
-  dy[phg->index_fg_g] = y[phg->index_fg_dg];
-  dy[phg->index_fg_dg] = 1.5*Om_norad*y[phg->index_fg_g]/(a*a) - (2.+AH_norad/H2_norad)*y[phg->index_fg_dg]/a;
+  if (phg->holo != 0) {
+    /* class_holo v2.1.2: g = non-interacting matter (baryons, ncdm), gc = CDM diluted by the unclustered injection
+       (synchronous gauge, CDM-comoving, deltaQ = 0): d gc/d ln a = d g/d ln a - q gc, q = Q/(H rho_cdm) */
+    double dm = phg->holo_fc*y[phg->index_fg_gc] + (1.-phg->holo_fc)*y[phg->index_fg_g];
+    dy[phg->index_fg_g] = y[phg->index_fg_dg];
+    dy[phg->index_fg_dg] = 1.5*Om_norad*dm/(a*a) - (2.+AH_norad/H2_norad)*y[phg->index_fg_dg]/a;
+    dy[phg->index_fg_gc] = y[phg->index_fg_dg] - phg->holo_q*y[phg->index_fg_gc]/a;
+  }
+  else {
+    dy[phg->index_fg_g] = y[phg->index_fg_dg];
+    dy[phg->index_fg_dg] = 1.5*Om_norad*y[phg->index_fg_g]/(a*a) - (2.+AH_norad/H2_norad)*y[phg->index_fg_dg]/a;
+  }
 
   return _SUCCESS_;
 }
@@ -2651,12 +2756,21 @@ int hmcode_growth_sources(
   phg = (struct hmcode_growth *)parameters_and_workspace;
 
   phg->a_table[index_a] = a;
-  phg->growth_table[index_a*phg->gt_size+phg->index_gt_g] = y[phg->index_fg_g]/a; //It is actually g(a)/a
-  phg->normgrowth_table[index_a] = y[phg->index_fg_g];
 
   class_call(hmcode_norad(phg, a),
              phg->error_message,
              phg->error_message);
+
+  if (phg->holo != 0) {
+    /* class_holo v2.1.2: the halo model works on the cold matter (CDM + baryons) */
+    double dcb = phg->holo_fcb*y[phg->index_fg_gc] + (1.-phg->holo_fcb)*y[phg->index_fg_g];
+    phg->growth_table[index_a*phg->gt_size+phg->index_gt_g] = dcb/a;
+    phg->normgrowth_table[index_a] = dcb;
+  }
+  else {
+    phg->growth_table[index_a*phg->gt_size+phg->index_gt_g] = y[phg->index_fg_g]/a; //It is actually g(a)/a
+    phg->normgrowth_table[index_a] = y[phg->index_fg_g];
+  }
 
   phg->growth_table[index_a*phg->gt_size+phg->index_gt_Omnorad] = phg->pvecnorad[phg->index_norad_Om];
 
@@ -2697,6 +2811,22 @@ int hmcode_norad(
     AHnr_nu = 0.;
   }
 
+  if (phg->holo != 0) {
+    /* class_holo v2.1.2: the interacting model's matter and vacuum (no radiation, as in HMcode's own table) */
+    double Xc, V, rho_c, rho_b, rho_nc;
+    hmcode_holo_interp(phg,a,&Xc,&V);
+    rho_c = Xc/a3;
+    rho_b = phg->Omega_b/a3;
+    rho_nc = (phg->Omega_b+phg->holo_Onc0)/a3;
+    AH_norad = -(rho_c+rho_nc+AHnr_nu+V*(1.+3.*w_v) + phg->Omega_w*(1.+3.*w_de)*X_de)/2.;
+    H2_norad = (rho_c + rho_nc + H2nr_nu + V + phg->Omega_w*X_de);
+    H2_norad+=phg->Omega_nu*(pow(1.+pow(0.3173*a/phg->a_nu,1.83),1./1.83)-1.)/a3/a;
+    Om_norad = (rho_c + rho_nc)/H2_norad;
+    phg->holo_q = (rho_c > 0.) ? holo_kernel_Q_over_H(phg->holo_pba,V,rho_b,rho_c)/rho_c : 0.;
+    phg->holo_fc = rho_c/(rho_c+rho_nc);
+    phg->holo_fcb = rho_c/(rho_c+rho_b);
+  }
+  else {
   AH_norad = -(phg->Omega_cdm/a3+phg->Omega_b/a3+AHnr_nu+phg->Omega_v*(1.+3.*w_v) + phg->Omega_w*(1.+3.*w_de)*X_de)/2.;
   H2_norad = (phg->Omega_cdm/a3 + phg->Omega_b/a3 + H2nr_nu + phg->Omega_v + phg->Omega_w*X_de + (1.-phg->Omega_m-phg->Omega_v-phg->Omega_w)/a/a);
 
@@ -2707,6 +2837,7 @@ int hmcode_norad(
   }
   else{
     Om_norad = (phg->Omega_cdm + phg->Omega_b)/a3/H2_norad;
+  }
   }
   phg->pvecnorad[phg->index_norad_H2] = H2_norad;
   phg->pvecnorad[phg->index_norad_AH] = AH_norad;

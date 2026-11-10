@@ -162,6 +162,8 @@ The holographic principle predicts f_clust = 0 from first principles. MCMC valid
 
 **v2.1 note (conserving closure).** With Q^μ = Q u_c^μ and a homogeneous w = −1 vacuum, momentum conservation forces δV = 0 on CDM-comoving slices, and energy conservation then forces δQ = 0 there (geodesic interacting vacuum). In synchronous gauge this is δ_c' = −h'/2 − (aQ/ρ_c) δ_c: `interaction_mode_filter = 0` with `f_clust = 0`. The solver refuses `f_clust ≠ 0` in that mode, because a clustered source would need vacuum perturbations the solver does not evolve. The legacy branch (`interaction_mode_filter = 1`, the default, identical to v2.0) multiplies the dilution term by (1 − f_clust) F(k) with F = (k/k_eq)²/(1 + (k/k_eq)²); with a smooth vacuum this does not conserve energy at the perturbation level, and the f_clust ≠ 0 results above come from that branch.
 
+**v2.1.2 note (non-linear power).** HMcode never reads CLASS's growth: it integrates its own no-radiation growth table from today's Ω_m with a⁻³ scaling and the input Ω_Λ. With the vacuum donor that is not the model (CDM a³ grows, the vacuum decays, the injected CDM is unclustered): at the β = 1/8, I_eff² best fit the table missed the model's linear growth by 5 to 8% for z = 0.5 to 3 and its budget today summed to 1.023. Since v2.1.2 the table is built from the model itself when `interaction_hmcode_growth = 1` (default): CDM and vacuum histories from the background table, the CDM contrast diluted by the injection as in `perturbations.c` (d δ_c/d ln a = d δ_b/d ln a − [Q/(Hρ_c)] δ_c), the halo model on the CDM+baryon growth, and HMcode 2020's Dolag concentration factor g(z=10)/g_ΛCDM(z=10) as for dynamical dark energy (`= 2` drops that factor, `= 0` restores the v2.1 table). The new table reproduces CLASS's linear growth with the same 0.1 to 0.3% residual as in ΛCDM. The linear P(k) was always correct; the non-linear power rises (β = 1/8, I_eff²: +0.7% at k = 1 h/Mpc, +2.6% at 3 h/Mpc for z = 0.5). HMcode is not calibrated on simulations of this coupling, so the non-linear power remains an extrapolation; the three settings bracket it. The same release adds the interaction term to the comoving-gauge δ_m behind P(k), (3aH − aQ/ρ_m) θ_m/k² (below 2×10⁻⁶ in P(k)), and to the Newtonian-gauge output of δ_cdm. CLASS's background growth factor D and rate f still assume conserved dust and should not be used for this model.
+
 ### 1.8 CPL Surrogate Analysis
 
 The holographic background is indistinguishable from ΛCDM. Fitting H(z) and D_M(z) to CPL parameterisation w(a) = w₀ + wₐ(1−a):
@@ -222,6 +224,7 @@ Reads all new parameters from .ini/.yaml files with defaults.
 | `interaction_ieff_type` | 0 | I_eff formulation: 0=squared, 1=lag², 2=lag, 3=fourth power, **4=unsquared (preferred)** |
 | `f_clust` | 0 | Clustering fraction [0,1]. Theory predicts 0 (homogeneous injection). Must be 0 when `interaction_mode_filter = 0`. |
 | `interaction_mode_filter` | 1 | 1 = legacy F(k) filter on the dilution term (v2.0 behaviour); **0 = no filter, conserving geodesic-vacuum closure (use for new runs)**. |
+| `interaction_hmcode_growth` | 1 | HMcode's growth table with the vacuum donor (v2.1.2): **1 = from the interacting model, with HMcode 2020's Dolag factor**; 2 = the same without that factor; 0 = uncoupled table of standard CLASS (v2.1 and earlier). |
 
 ### 3.2 Super-Schwarzschild Parameters
 

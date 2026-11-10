@@ -2757,6 +2757,13 @@ int input_read_parameters_species(struct file_content * pfc,
              "interaction_mode_filter=0 (conserving geodesic-vacuum closure) requires interaction_vacuum_donor=1, "
              "interaction_cdm_closure=0 and interaction_creation_pressure=0; got %d, %d, %d",
              pba->interaction_vacuum_donor, pba->interaction_cdm_closure, pba->interaction_creation_pressure);
+  /* HMcode's growth table with the interaction on (v2.1.2) */
+  class_read_int("interaction_hmcode_growth",pba->interaction_hmcode_growth);
+  class_test((pba->interaction_hmcode_growth < 0) || (pba->interaction_hmcode_growth > 2),
+             errmsg,
+             "interaction_hmcode_growth must be 0 (uncoupled growth table, v2.1 behaviour), 1 (growth of the interacting "
+             "model, with HMcode's Dolag factor) or 2 (the same without the Dolag factor); got %d",
+             pba->interaction_hmcode_growth);
   /* Complete set of parameters */
   pba->K = -pba->Omega0_k*pow(pba->H0,2);
   if (pba->K > 0.){
@@ -5964,6 +5971,7 @@ int input_default_params(struct background *pba,
   pba->interaction_cdm_closure = 0;
   pba->interaction_vacuum_donor = 0;
   pba->interaction_mode_filter = 1;          /**< default: legacy F(k) filter, reproduces v2.0 */
+  pba->interaction_hmcode_growth = 1;        /**< default: HMcode growth of the interacting model (0 reproduces v2.1) */
   pba->index_bi_rho_lambda = -1;
   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
   /** 8.a) Omega fluid */
